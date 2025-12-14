@@ -615,7 +615,7 @@ async def send_all(bot, userid, files, ident, chat_id, user_name, query):
         else:
             for file in files:
                 f_caption = file["caption"]
-                title = file["file_name"]
+                title = file["file_name"].replace("@VJ_Bots", "@anihubyt25").replace("@Tech_VJ", "@anihubyt25")
                 size = get_size(file["file_size"])
                 if CUSTOM_FILE_CAPTION:
                     try:
