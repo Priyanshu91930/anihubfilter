@@ -13,7 +13,8 @@ id_pattern = re.compile(r'^.\d+$')
 SESSION = environ.get('SESSION', 'TechVJBot')
 API_ID = int(environ.get('API_ID', '27686895'))
 API_HASH = environ.get('API_HASH', '0e996bd3891969ec5dfebf8bb3e39e94')
-BOT_TOKEN = environ.get('BOT_TOKEN', "8404265354:AAF9Ymoupokat-2oDOf1RG3s89-qDGaw344")
+# BOT_TOKEN = environ.get('BOT_TOKEN', "8404265354:AAF9Ymoupokat-2oDOf1RG3s89-qDGaw344")
+BOT_TOKEN = environ.get('BOT_TOKEN', "8369348507:AAHCfZsN6Uw4_r59IKT839QUvQB2VlpogtE")
 
 
 # This Pictures Is For Start Message Picture, You Can Add Multiple By Giving One Space Between Each.
@@ -26,7 +27,8 @@ auth_users = [int(user) if id_pattern.search(user) else user for user in environ
 AUTH_USERS = (auth_users + ADMINS) if auth_users else []
 
 # This Channel Is For When User Start Your Bot Then Bot Send That User Name And Id In This Log Channel, Same For Group Also.
-LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003129131957'))
+# LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003129131957'))  
+LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003654284775'))
 
 # This Is File Channel Where You Upload Your File Then Bot Automatically Save It In Database 
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '-1002906962851' '-1003321519174' '-1003429293825').split()]  # For Multiple Id Use One Space Between Each.
@@ -59,7 +61,9 @@ DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in enviro
 
 
 # MongoDB information
-DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://anihubyt:xG92SHTUX4Cd7BcA@cluster0.qv5tu12.mongodb.net/?appName=Cluster0")   # IF Multiple Database Is False Then Fill Only This Database Url.
+# DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://anihubyt:xG92SHTUX4Cd7BcA@cluster0.qv5tu12.mongodb.net/?appName=Cluster0")   # IF Multiple Database Is False Then Fill Only This Database Url.
+DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://priyanshusolanki62:Zxcvbnmm9193@cluster0.tk16ay6.mongodb.net/?appName=Cluster0")
+
 DATABASE_NAME = environ.get('DATABASE_NAME', "anihubyt")
 COLLECTION_NAME = environ.get('COLLECTION_NAME', 'anihubyt')
 
