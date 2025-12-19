@@ -30,6 +30,7 @@ BUTTONS0 = {}
 BUTTONS1 = {}
 BUTTONS2 = {}
 SPELL_CHECK = {}
+VP_INPUTS = {}  # For verify panel input handling
 
 @Client.on_message(filters.group & filters.text & filters.incoming)
 async def give_filter(client, message):
@@ -1043,8 +1044,65 @@ async def filter_qualities_cb_handler(client: Client, query: CallbackQuery):
                 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    # Skip verify panel callbacks - handled by verify_panel.py
+    # Handle verify panel callbacks
     if query.data.startswith("vp_"):
+        if query.from_user.id not in ADMINS:
+            return await query.answer("⛔ Only admins can use this!", show_alert=True)
+        
+        data = query.data
+        
+        # Toggle verification ON/OFF
+        if data == "vp_toggle":
+            settings = await db.get_verify_settings()
+            new_status = not settings.get('enabled', False)
+            settings['enabled'] = new_status
+            await db.update_verify_settings(settings)
+            status_text = "ON ✅" if new_status else "OFF ❌"
+            await query.answer(f"Verification is now {status_text}", show_alert=True)
+            await refresh_vp_panel(client, query.message)
+        
+        # Refresh panel
+        elif data == "vp_refresh":
+            await refresh_vp_panel(client, query.message)
+            await query.answer("🔄 Refreshed!")
+        
+        # View verified users
+        elif data.startswith("vp_users_"):
+            page = int(data.split("_")[2])
+            await show_vp_users(client, query, page)
+        
+        # Set shortlink URL
+        elif data == "vp_shortlink":
+            VP_INPUTS[query.from_user.id] = {'type': 'shortlink_url'}
+            text = "<b>🔗 Set Shortlink URL</b>\n\nSend the shortlink domain (e.g., atglinks.com)\n\nSend /cancel to cancel."
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the shortlink URL now...")
+        
+        # Set API key
+        elif data == "vp_api":
+            VP_INPUTS[query.from_user.id] = {'type': 'shortlink_api'}
+            text = "<b>🔑 Set Shortlink API Key</b>\n\nSend your shortlink API key.\n\nSend /cancel to cancel."
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the API key now...")
+        
+        # Set validity hours
+        elif data == "vp_validity":
+            VP_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
+            text = "<b>⏰ Set Validity</b>\n\nSend the number of hours (e.g., 24, 48, 72)\n\nSend /cancel to cancel."
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the validity hours now...")
+        
+        # Revoke user
+        elif data.startswith("vp_revoke_"):
+            user_id = int(data.split("_")[2])
+            await db.revoke_user_verification(user_id)
+            await query.answer(f"✅ Revoked user {user_id}", show_alert=True)
+            await show_vp_users(client, query, 0)
+        
+        # Back to panel
+        elif data == "vp_back":
+            await refresh_vp_panel(client, query.message)
+        
         return
     
     if query.data == "close_data":
@@ -3239,3 +3297,96 @@ async def global_filters(client, message, text=False):
     else:
         return False
 
+
+# =========== VERIFY PANEL HELPER FUNCTIONS ===========
+async def refresh_vp_panel(client, message):
+    """Refresh the verification admin panel"""
+    settings = await db.get_verify_settings()
+    verified_count = await db.get_verified_users_count()
+    
+    status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
+    shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
+    shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
+    validity_hours = settings.get('validity_hours', 24)
+    
+    if shortlink_api and shortlink_api != 'Not Set':
+        masked_api = shortlink_api[:8] + "..." + shortlink_api[-4:] if len(shortlink_api) > 12 else "****"
+    else:
+        masked_api = 'Not Set'
+    
+    text = f"""<b>🔐 Verification Admin Panel</b>
+
+━━━━━━━━━━━━━━━━━━━━
+
+<b>📊 Status:</b> {status}
+<b>👥 Verified Users:</b> {verified_count}
+<b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
+<b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
+<b>🔑 Shortlink API:</b> <code>{masked_api}</code>
+
+━━━━━━━━━━━━━━━━━━━━
+
+<i>Use the buttons below to manage verification:</i>"""
+
+    buttons = [
+        [InlineKeyboardButton("✅ Turn ON" if not settings.get('enabled', False) else "❌ Turn OFF", callback_data="vp_toggle")],
+        [InlineKeyboardButton("👥 View Users", callback_data="vp_users_0"), InlineKeyboardButton("⏰ Set Validity", callback_data="vp_validity")],
+        [InlineKeyboardButton("🔗 Set Shortlink", callback_data="vp_shortlink"), InlineKeyboardButton("🔑 Set API", callback_data="vp_api")],
+        [InlineKeyboardButton("🔄 Refresh", callback_data="vp_refresh"), InlineKeyboardButton("❌ Close", callback_data="close_data")]
+    ]
+    
+    await message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+
+
+async def show_vp_users(client, query, page):
+    """Show verified users with pagination"""
+    users_cursor = await db.get_all_verified_users()
+    users = [user async for user in users_cursor]
+    
+    total_users = len(users)
+    per_page = 10
+    total_pages = (total_users + per_page - 1) // per_page if total_users > 0 else 1
+    
+    if total_users == 0:
+        text = "<b>👥 Verified Users</b>\n\n━━━━━━━━━━━━━━━━━━━━\n\n<i>No verified users found.</i>\n\n━━━━━━━━━━━━━━━━━━━━"
+        buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="vp_back")]]
+        await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+        return
+    
+    start_idx = page * per_page
+    end_idx = start_idx + per_page
+    page_users = users[start_idx:end_idx]
+    
+    text = f"<b>👥 Verified Users ({total_users} total)</b>\n\n━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    for i, user in enumerate(page_users, start=start_idx + 1):
+        username = user.get('username', 'Unknown')
+        user_id = user.get('user_id', 'Unknown')
+        text += f"<b>{i}.</b> @{username} | <code>{user_id}</code>\n"
+    
+    text += f"\n━━━━━━━━━━━━━━━━━━━━\n\n<i>Page {page + 1}/{total_pages}</i>"
+
+    buttons = []
+    
+    row = []
+    for user in page_users:
+        user_id = user.get('user_id')
+        username = user.get('username', str(user_id))[:15]
+        row.append(InlineKeyboardButton(f"❌ {username}", callback_data=f"vp_revoke_{user_id}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"vp_users_{page - 1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"vp_users_{page + 1}"))
+    if nav_buttons:
+        buttons.append(nav_buttons)
+    
+    buttons.append([InlineKeyboardButton("⬅️ Back to Panel", callback_data="vp_back")])
+    
+    await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
