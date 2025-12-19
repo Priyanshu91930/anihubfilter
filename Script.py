@@ -5,19 +5,8 @@
 class script(object):
     START_TXT = """<b>👋 Hey {}, Welcome!</b>
 
-━━━━━━━━━━━━━━━━━━━━
-
 🎬 <b>I'm AniHub Movies Bot</b>
 Your ultimate destination for Movies & Series!
-
-✨ <b>Features:</b>
-├ 🔍 Instant Movie Search
-├ 📺 HD Quality Content  
-├ ⚡ Ultra Fast Delivery
-├ 🎯 Auto Filter System
-└ 💰 Earn With Us!
-
-━━━━━━━━━━━━━━━━━━━━
 
 <i>Just type any movie/series name to search!</i>"""
 
