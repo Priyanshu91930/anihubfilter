@@ -1043,6 +1043,10 @@ async def filter_qualities_cb_handler(client: Client, query: CallbackQuery):
                 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
+    # Skip verify panel callbacks - handled by verify_panel.py
+    if query.data.startswith("vp_"):
+        return
+    
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "get_trail":
