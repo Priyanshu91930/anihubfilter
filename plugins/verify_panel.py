@@ -15,11 +15,19 @@ PENDING_INPUTS = {}
 
 # ==================== VERIFY PANEL COMMAND ====================
 @Client.on_message(filters.command("verify_panel") & filters.private)
-async def verify_panel(client, message):
+async def verify_panel_cmd(client, message):
     """Admin command to open verification management panel"""
-    if message.from_user.id not in ADMINS:
+    user_id = message.from_user.id
+    logger.info(f"verify_panel command from user {user_id}")
+    
+    if user_id not in ADMINS:
         return await message.reply("⛔ This command is only for admins!")
     
+    await send_verify_panel(client, message)
+
+
+async def send_verify_panel(client, message, edit=False):
+    """Send or edit the verification panel"""
     # Get current settings
     settings = await db.get_verify_settings()
     verified_count = await db.get_verified_users_count()
@@ -52,27 +60,30 @@ async def verify_panel(client, message):
     buttons = [
         [
             InlineKeyboardButton("✅ Turn ON" if not settings.get('enabled', False) else "❌ Turn OFF", 
-                               callback_data="verify_toggle")
+                               callback_data="vp_toggle")
         ],
         [
-            InlineKeyboardButton("👥 View Users", callback_data="verify_users_0"),
-            InlineKeyboardButton("⏰ Set Validity", callback_data="verify_set_validity")
+            InlineKeyboardButton("👥 View Users", callback_data="vp_users_0"),
+            InlineKeyboardButton("⏰ Set Validity", callback_data="vp_validity")
         ],
         [
-            InlineKeyboardButton("🔗 Set Shortlink", callback_data="verify_set_shortlink"),
-            InlineKeyboardButton("🔑 Set API", callback_data="verify_set_api")
+            InlineKeyboardButton("🔗 Set Shortlink", callback_data="vp_shortlink"),
+            InlineKeyboardButton("🔑 Set API", callback_data="vp_api")
         ],
         [
-            InlineKeyboardButton("🔄 Refresh", callback_data="verify_refresh"),
+            InlineKeyboardButton("🔄 Refresh", callback_data="vp_refresh"),
             InlineKeyboardButton("❌ Close", callback_data="close_data")
         ]
     ]
     
-    await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+    if edit:
+        await message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+    else:
+        await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
 
 
 # ==================== TEXT INPUT HANDLER ====================
-@Client.on_message(filters.private & filters.text & filters.create(lambda _, __, m: m.from_user.id in PENDING_INPUTS))
+@Client.on_message(filters.private & filters.text & ~filters.command(["start", "help", "verify_panel"]))
 async def handle_verify_input(client, message):
     """Handle text input for verification settings"""
     user_id = message.from_user.id
@@ -112,16 +123,17 @@ async def handle_verify_input(client, message):
 
 
 # ==================== CALLBACK HANDLERS ====================
-@Client.on_callback_query(filters.regex(r"^verify_"))
-async def verify_callback_handler(client, query: CallbackQuery):
+@Client.on_callback_query(filters.regex(r"^vp_"))
+async def verify_panel_callback(client, query: CallbackQuery):
     """Handle verification panel callbacks"""
     if query.from_user.id not in ADMINS:
         return await query.answer("⛔ Only admins can use this!", show_alert=True)
     
     data = query.data
+    logger.info(f"Verify panel callback: {data}")
     
     # Toggle verification ON/OFF
-    if data == "verify_toggle":
+    if data == "vp_toggle":
         settings = await db.get_verify_settings()
         new_status = not settings.get('enabled', False)
         settings['enabled'] = new_status
@@ -129,22 +141,20 @@ async def verify_callback_handler(client, query: CallbackQuery):
         
         status_text = "ON ✅" if new_status else "OFF ❌"
         await query.answer(f"Verification is now {status_text}", show_alert=True)
-        
-        # Refresh the panel
-        await refresh_verify_panel(query)
+        await send_verify_panel(client, query.message, edit=True)
     
     # Refresh panel
-    elif data == "verify_refresh":
-        await refresh_verify_panel(query)
+    elif data == "vp_refresh":
+        await send_verify_panel(client, query.message, edit=True)
         await query.answer("🔄 Refreshed!")
     
     # View verified users (with pagination)
-    elif data.startswith("verify_users_"):
+    elif data.startswith("vp_users_"):
         page = int(data.split("_")[2])
         await show_verified_users(query, page)
     
     # Set shortlink URL prompt
-    elif data == "verify_set_shortlink":
+    elif data == "vp_shortlink":
         PENDING_INPUTS[query.from_user.id] = {'type': 'shortlink_url'}
         text = """<b>🔗 Set Shortlink URL</b>
 
@@ -164,7 +174,7 @@ Send /cancel to cancel."""
         await query.answer("📝 Send the shortlink URL now...")
     
     # Set API key prompt
-    elif data == "verify_set_api":
+    elif data == "vp_api":
         PENDING_INPUTS[query.from_user.id] = {'type': 'shortlink_api'}
         text = """<b>🔑 Set Shortlink API Key</b>
 
@@ -178,7 +188,7 @@ Send /cancel to cancel."""
         await query.answer("📝 Send the API key now...")
     
     # Set validity hours
-    elif data == "verify_set_validity":
+    elif data == "vp_validity":
         PENDING_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
         text = """<b>⏰ Set Verification Validity</b>
 
@@ -195,67 +205,15 @@ Send /cancel to cancel."""
         await query.answer("📝 Send the validity hours now...")
     
     # Revoke user verification
-    elif data.startswith("verify_revoke_"):
+    elif data.startswith("vp_revoke_"):
         user_id = int(data.split("_")[2])
         await db.revoke_user_verification(user_id)
         await query.answer(f"✅ Revoked verification for user {user_id}", show_alert=True)
-        # Go back to users list
         await show_verified_users(query, 0)
     
     # Back to panel
-    elif data == "verify_back":
-        await refresh_verify_panel(query)
-
-
-async def refresh_verify_panel(query):
-    """Refresh the verification panel"""
-    settings = await db.get_verify_settings()
-    verified_count = await db.get_verified_users_count()
-    
-    status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
-    shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
-    shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
-    validity_hours = settings.get('validity_hours', 24)
-    
-    if shortlink_api and shortlink_api != 'Not Set':
-        masked_api = shortlink_api[:8] + "..." + shortlink_api[-4:] if len(shortlink_api) > 12 else "****"
-    else:
-        masked_api = 'Not Set'
-    
-    text = f"""<b>🔐 Verification Admin Panel</b>
-
-━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 Status:</b> {status}
-<b>👥 Verified Users:</b> {verified_count}
-<b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
-<b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
-<b>🔑 Shortlink API:</b> <code>{masked_api}</code>
-
-━━━━━━━━━━━━━━━━━━━━
-
-<i>Use the buttons below to manage verification:</i>"""
-
-    buttons = [
-        [
-            InlineKeyboardButton("✅ Turn ON" if not settings.get('enabled', False) else "❌ Turn OFF", 
-                               callback_data="verify_toggle")
-        ],
-        [
-            InlineKeyboardButton("👥 View Users", callback_data="verify_users_0"),
-            InlineKeyboardButton("⏰ Set Validity", callback_data="verify_set_validity")
-        ],
-        [
-            InlineKeyboardButton("🔗 Set Shortlink", callback_data="verify_set_shortlink"),
-            InlineKeyboardButton("🔑 Set API", callback_data="verify_set_api")
-        ],
-        [
-            InlineKeyboardButton("🔄 Refresh", callback_data="verify_refresh"),
-            InlineKeyboardButton("❌ Close", callback_data="close_data")
-        ]
-    ]
-    
-    await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+    elif data == "vp_back":
+        await send_verify_panel(client, query.message, edit=True)
 
 
 async def show_verified_users(query, page):
@@ -275,7 +233,7 @@ async def show_verified_users(query, page):
 <i>No verified users found.</i>
 
 ━━━━━━━━━━━━━━━━━━━━"""
-        buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="verify_back")]]
+        buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="vp_back")]]
         await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
         return
     
@@ -308,7 +266,7 @@ async def show_verified_users(query, page):
     for user in page_users:
         user_id = user.get('user_id')
         username = user.get('username', str(user_id))[:15]
-        row.append(InlineKeyboardButton(f"❌ {username}", callback_data=f"verify_revoke_{user_id}"))
+        row.append(InlineKeyboardButton(f"❌ {username}", callback_data=f"vp_revoke_{user_id}"))
         if len(row) == 2:
             buttons.append(row)
             row = []
@@ -318,12 +276,12 @@ async def show_verified_users(query, page):
     # Navigation buttons
     nav_buttons = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"verify_users_{page - 1}"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"vp_users_{page - 1}"))
     if page < total_pages - 1:
-        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"verify_users_{page + 1}"))
+        nav_buttons.append(InlineKeyboardButton("➡️ Next", callback_data=f"vp_users_{page + 1}"))
     if nav_buttons:
         buttons.append(nav_buttons)
     
-    buttons.append([InlineKeyboardButton("⬅️ Back to Panel", callback_data="verify_back")])
+    buttons.append([InlineKeyboardButton("⬅️ Back to Panel", callback_data="vp_back")])
     
     await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
