@@ -10,6 +10,9 @@ from utils import temp
 
 logger = logging.getLogger(__name__)
 
+# Temp storage for pending inputs
+PENDING_INPUTS = {}
+
 # ==================== VERIFY PANEL COMMAND ====================
 @Client.on_message(filters.command("verify_panel") & filters.private)
 async def verify_panel(client, message):
@@ -22,8 +25,8 @@ async def verify_panel(client, message):
     verified_count = await db.get_verified_users_count()
     
     status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
-    shortlink_url = settings.get('shortlink_url', 'Not Set')
-    shortlink_api = settings.get('shortlink_api', 'Not Set')
+    shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
+    shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
     validity_hours = settings.get('validity_hours', 24)
     
     # Mask API key for security
@@ -68,6 +71,46 @@ async def verify_panel(client, message):
     await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
 
 
+# ==================== TEXT INPUT HANDLER ====================
+@Client.on_message(filters.private & filters.text & filters.create(lambda _, __, m: m.from_user.id in PENDING_INPUTS))
+async def handle_verify_input(client, message):
+    """Handle text input for verification settings"""
+    user_id = message.from_user.id
+    if user_id not in PENDING_INPUTS:
+        return
+    
+    pending = PENDING_INPUTS.pop(user_id)
+    input_type = pending.get('type')
+    
+    if message.text.lower() == "/cancel":
+        await message.reply("❌ Cancelled!")
+        return
+    
+    settings = await db.get_verify_settings()
+    
+    if input_type == "shortlink_url":
+        settings['shortlink_url'] = message.text.strip()
+        await db.update_verify_settings(settings)
+        await message.reply(f"✅ Shortlink URL set to: <code>{message.text.strip()}</code>", parse_mode=enums.ParseMode.HTML)
+    
+    elif input_type == "shortlink_api":
+        settings['shortlink_api'] = message.text.strip()
+        await db.update_verify_settings(settings)
+        await message.reply("✅ Shortlink API key saved successfully!")
+    
+    elif input_type == "validity_hours":
+        try:
+            hours = int(message.text.strip())
+            if hours < 1 or hours > 720:
+                await message.reply("❌ Please enter a number between 1 and 720 hours!")
+                return
+            settings['validity_hours'] = hours
+            await db.update_verify_settings(settings)
+            await message.reply(f"✅ Verification validity set to <code>{hours} hours</code>!", parse_mode=enums.ParseMode.HTML)
+        except ValueError:
+            await message.reply("❌ Please enter a valid number!")
+
+
 # ==================== CALLBACK HANDLERS ====================
 @Client.on_callback_query(filters.regex(r"^verify_"))
 async def verify_callback_handler(client, query: CallbackQuery):
@@ -102,6 +145,7 @@ async def verify_callback_handler(client, query: CallbackQuery):
     
     # Set shortlink URL prompt
     elif data == "verify_set_shortlink":
+        PENDING_INPUTS[query.from_user.id] = {'type': 'shortlink_url'}
         text = """<b>🔗 Set Shortlink URL</b>
 
 Send the shortlink domain (without https://)
@@ -117,35 +161,11 @@ Send the shortlink domain (without https://)
 Send /cancel to cancel."""
         
         await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
-        
-        # Wait for user response
-        try:
-            response = await client.ask(
-                query.message.chat.id, 
-                text, 
-                filters=filters.text,
-                timeout=60
-            )
-            
-            if response.text.lower() == "/cancel":
-                await response.reply("❌ Cancelled!")
-                await refresh_verify_panel_message(client, query.message)
-                return
-            
-            # Save the shortlink URL
-            settings = await db.get_verify_settings()
-            settings['shortlink_url'] = response.text.strip()
-            await db.update_verify_settings(settings)
-            
-            await response.reply(f"✅ Shortlink URL set to: <code>{response.text.strip()}</code>", parse_mode=enums.ParseMode.HTML)
-            await refresh_verify_panel_message(client, query.message)
-            
-        except Exception as e:
-            await query.message.reply(f"⏰ Timeout or error: {e}")
-            await refresh_verify_panel_message(client, query.message)
+        await query.answer("📝 Send the shortlink URL now...")
     
     # Set API key prompt
     elif data == "verify_set_api":
+        PENDING_INPUTS[query.from_user.id] = {'type': 'shortlink_api'}
         text = """<b>🔑 Set Shortlink API Key</b>
 
 Send your shortlink API key.
@@ -155,34 +175,11 @@ Send your shortlink API key.
 Send /cancel to cancel."""
         
         await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
-        
-        try:
-            response = await client.ask(
-                query.message.chat.id, 
-                text, 
-                filters=filters.text,
-                timeout=60
-            )
-            
-            if response.text.lower() == "/cancel":
-                await response.reply("❌ Cancelled!")
-                await refresh_verify_panel_message(client, query.message)
-                return
-            
-            # Save the API key
-            settings = await db.get_verify_settings()
-            settings['shortlink_api'] = response.text.strip()
-            await db.update_verify_settings(settings)
-            
-            await response.reply("✅ Shortlink API key saved successfully!")
-            await refresh_verify_panel_message(client, query.message)
-            
-        except Exception as e:
-            await query.message.reply(f"⏰ Timeout or error: {e}")
-            await refresh_verify_panel_message(client, query.message)
+        await query.answer("📝 Send the API key now...")
     
     # Set validity hours
     elif data == "verify_set_validity":
+        PENDING_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
         text = """<b>⏰ Set Verification Validity</b>
 
 Send the number of hours for verification validity.
@@ -195,41 +192,7 @@ Send the number of hours for verification validity.
 Send /cancel to cancel."""
         
         await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
-        
-        try:
-            response = await client.ask(
-                query.message.chat.id, 
-                text, 
-                filters=filters.text,
-                timeout=60
-            )
-            
-            if response.text.lower() == "/cancel":
-                await response.reply("❌ Cancelled!")
-                await refresh_verify_panel_message(client, query.message)
-                return
-            
-            # Validate and save validity hours
-            try:
-                hours = int(response.text.strip())
-                if hours < 1 or hours > 720:  # Max 30 days
-                    await response.reply("❌ Please enter a number between 1 and 720 hours!")
-                    await refresh_verify_panel_message(client, query.message)
-                    return
-                    
-                settings = await db.get_verify_settings()
-                settings['validity_hours'] = hours
-                await db.update_verify_settings(settings)
-                
-                await response.reply(f"✅ Verification validity set to <code>{hours} hours</code>!", parse_mode=enums.ParseMode.HTML)
-                await refresh_verify_panel_message(client, query.message)
-            except ValueError:
-                await response.reply("❌ Please enter a valid number!")
-                await refresh_verify_panel_message(client, query.message)
-            
-        except Exception as e:
-            await query.message.reply(f"⏰ Timeout or error: {e}")
-            await refresh_verify_panel_message(client, query.message)
+        await query.answer("📝 Send the validity hours now...")
     
     # Revoke user verification
     elif data.startswith("verify_revoke_"):
@@ -295,57 +258,6 @@ async def refresh_verify_panel(query):
     await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
 
 
-async def refresh_verify_panel_message(client, message):
-    """Refresh the verification panel (for message object)"""
-    settings = await db.get_verify_settings()
-    verified_count = await db.get_verified_users_count()
-    
-    status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
-    shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
-    shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
-    validity_hours = settings.get('validity_hours', 24)
-    
-    if shortlink_api and shortlink_api != 'Not Set':
-        masked_api = shortlink_api[:8] + "..." + shortlink_api[-4:] if len(shortlink_api) > 12 else "****"
-    else:
-        masked_api = 'Not Set'
-    
-    text = f"""<b>🔐 Verification Admin Panel</b>
-
-━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 Status:</b> {status}
-<b>👥 Verified Users:</b> {verified_count}
-<b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
-<b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
-<b>🔑 Shortlink API:</b> <code>{masked_api}</code>
-
-━━━━━━━━━━━━━━━━━━━━
-
-<i>Use the buttons below to manage verification:</i>"""
-
-    buttons = [
-        [
-            InlineKeyboardButton("✅ Turn ON" if not settings.get('enabled', False) else "❌ Turn OFF", 
-                               callback_data="verify_toggle")
-        ],
-        [
-            InlineKeyboardButton("👥 View Users", callback_data="verify_users_0"),
-            InlineKeyboardButton("⏰ Set Validity", callback_data="verify_set_validity")
-        ],
-        [
-            InlineKeyboardButton("🔗 Set Shortlink", callback_data="verify_set_shortlink"),
-            InlineKeyboardButton("🔑 Set API", callback_data="verify_set_api")
-        ],
-        [
-            InlineKeyboardButton("🔄 Refresh", callback_data="verify_refresh"),
-            InlineKeyboardButton("❌ Close", callback_data="close_data")
-        ]
-    ]
-    
-    await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
-
-
 async def show_verified_users(query, page):
     """Show verified users with pagination"""
     users_cursor = await db.get_all_verified_users()
@@ -381,7 +293,6 @@ async def show_verified_users(query, page):
     for i, user in enumerate(page_users, start=start_idx + 1):
         username = user.get('username', 'Unknown')
         user_id = user.get('user_id', 'Unknown')
-        verified_date = user.get('verified_date', 'Unknown')
         text += f"<b>{i}.</b> @{username} | <code>{user_id}</code>\n"
     
     text += f"""
