@@ -86,6 +86,44 @@ async def pm_text(bot, message):
     user = message.from_user.first_name
     user_id = message.from_user.id
     if content.startswith("/") or content.startswith("#"): return  # ignore commands and hashtags
+    
+    # Handle verify panel input
+    if user_id in VP_INPUTS:
+        pending = VP_INPUTS.pop(user_id)
+        input_type = pending.get('type')
+        
+        if content.lower() == "/cancel":
+            await message.reply("❌ Cancelled!")
+            return
+        
+        try:
+            settings = await db.get_verify_settings()
+            
+            if input_type == "shortlink_url":
+                settings['shortlink_url'] = content.strip()
+                await db.update_verify_settings(settings)
+                await message.reply(f"✅ Shortlink URL set to: <code>{content.strip()}</code>", parse_mode=enums.ParseMode.HTML)
+            
+            elif input_type == "shortlink_api":
+                settings['shortlink_api'] = content.strip()
+                await db.update_verify_settings(settings)
+                await message.reply("✅ Shortlink API key saved successfully!")
+            
+            elif input_type == "validity_hours":
+                try:
+                    hours = int(content.strip())
+                    if hours < 1 or hours > 720:
+                        await message.reply("❌ Please enter a number between 1 and 720 hours!")
+                        return
+                    settings['validity_hours'] = hours
+                    await db.update_verify_settings(settings)
+                    await message.reply(f"✅ Verification validity set to <code>{hours} hours</code>!", parse_mode=enums.ParseMode.HTML)
+                except ValueError:
+                    await message.reply("❌ Please enter a valid number!")
+        except Exception as e:
+            await message.reply(f"❌ Error: {e}")
+        return
+    
     if PM_SEARCH == True:
         ai_search = True
         reply_msg = await bot.send_message(message.from_user.id, f"<b><i>Searching For {content} 🔍</i></b>", reply_to_message_id=message.id)
