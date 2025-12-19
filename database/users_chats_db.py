@@ -307,6 +307,62 @@ class Database:
         user = await self.col.find_one({'id': int(id)})
         return user.get('save', False) 
     
+    # Verification Management Methods
+    async def add_verified_user(self, user_id, username, expiry_date):
+        """Add a user to verified users collection"""
+        verified_col = self.db.verified_users
+        user_data = {
+            'user_id': user_id,
+            'username': username,
+            'verified_date': expiry_date,
+            'verified_at': datetime.datetime.now()
+        }
+        await verified_col.update_one({'user_id': user_id}, {'$set': user_data}, upsert=True)
+    
+    async def get_all_verified_users(self):
+        """Get all verified users"""
+        verified_col = self.db.verified_users
+        return verified_col.find({})
+    
+    async def get_verified_users_count(self):
+        """Get count of verified users"""
+        verified_col = self.db.verified_users
+        return await verified_col.count_documents({})
+    
+    async def revoke_user_verification(self, user_id):
+        """Remove a user from verified users"""
+        verified_col = self.db.verified_users
+        await verified_col.delete_one({'user_id': user_id})
+        return True
+    
+    async def is_user_verified_db(self, user_id):
+        """Check if user is verified in database"""
+        verified_col = self.db.verified_users
+        user = await verified_col.find_one({'user_id': user_id})
+        return bool(user)
+    
+    async def get_verify_settings(self):
+        """Get verification settings"""
+        settings_col = self.db.verify_settings
+        settings = await settings_col.find_one({'_id': 'verify_config'})
+        if not settings:
+            return {
+                'enabled': False,
+                'shortlink_url': '',
+                'shortlink_api': '',
+                'tutorial': ''
+            }
+        return settings
+    
+    async def update_verify_settings(self, settings_data):
+        """Update verification settings"""
+        settings_col = self.db.verify_settings
+        await settings_col.update_one(
+            {'_id': 'verify_config'}, 
+            {'$set': settings_data}, 
+            upsert=True
+        )
+    
 
 db = Database(USER_DB_URI, DATABASE_NAME)
 

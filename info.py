@@ -28,7 +28,7 @@ AUTH_USERS = (auth_users + ADMINS) if auth_users else []
 
 # This Channel Is For When User Start Your Bot Then Bot Send That User Name And Id In This Log Channel, Same For Group Also.
 # LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003129131957'))  
-LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003591540042'))
+LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003654284775'))
 
 # This Is File Channel Where You Upload Your File Then Bot Automatically Save It In Database 
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '-1002906962851' '-1003321519174' '-1003429293825').split()]  # For Multiple Id Use One Space Between Each.
@@ -62,7 +62,7 @@ DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in enviro
 
 # MongoDB information
 # DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://anihubyt:xG92SHTUX4Cd7BcA@cluster0.qv5tu12.mongodb.net/?appName=Cluster0")   # IF Multiple Database Is False Then Fill Only This Database Url.
-DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://anihubbot:Anihub123@cluster0.tk16ay6.mongodb.net/?appName=Cluster0")
+DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://priyanshusolanki62:VmlKaYsfllr5CEQd@cluster0.tk16ay6.mongodb.net/?appName=Cluster0")
 
 DATABASE_NAME = environ.get('DATABASE_NAME', "anihubyt")
 COLLECTION_NAME = environ.get('COLLECTION_NAME', 'anihubyt')

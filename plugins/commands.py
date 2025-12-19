@@ -379,16 +379,43 @@ async def start(client, message):
         userid = data.split("-", 2)[1]
         token = data.split("-", 3)[2]
         if str(message.from_user.id) != str(userid):
-            return await message.reply_text(text="<b>ɪɴᴠᴀʟɪᴅ ʟɪɴᴋ ᴏʀ ᴇxᴘɪʀᴇᴅ ʟɪɴᴋ</b>", protect_content=True)
+            return await message.reply_text(text="<b>❌ Invalid or expired link!</b>", protect_content=True)
         is_valid = await check_token(client, userid, token)
         if is_valid == True:
-            text = "<b>ʜᴇʏ {} 👋,\n\nʏᴏᴜ ʜᴀᴠᴇ ᴄᴏᴍᴘʟᴇᴛᴇᴅ ᴛʜᴇ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ...\n\nɴᴏᴡ ʏᴏᴜ ʜᴀᴠᴇ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇss ᴛɪʟʟ ᴛᴏᴅᴀʏ ɴᴏᴡ ᴇɴᴊᴏʏ\n\n</b>"
-            if PREMIUM_AND_REFERAL_MODE == True:
-                text += "<b>ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴅɪʀᴇᴄᴛ ғɪʟᴇꜱ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴꜱ ᴛʜᴇɴ ʙᴜʏ ʙᴏᴛ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ ☺️\n\n💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"           
-            await message.reply_text(text=text.format(message.from_user.mention), protect_content=True)
             await verify_user(client, userid, token)
+            
+            # Get validity duration from settings or use default 24 hours
+            verify_settings = await db.get_verify_settings()
+            validity_hours = verify_settings.get('validity_hours', 24)
+            
+            text = f"""<b>✅ Verification Successful!</b>
+
+━━━━━━━━━━━━━━━━━━━━
+
+👋 Hey {message.from_user.mention}!
+
+🎉 <b>You now have access to all files!</b>
+
+⏰ <b>Validity:</b> <code>{validity_hours} Hours</code>
+📅 <b>Expires:</b> Tomorrow at this time
+
+━━━━━━━━━━━━━━━━━━━━
+
+<i>Enjoy unlimited downloads! 🎬</i>"""
+            
+            if PREMIUM_AND_REFERAL_MODE == True:
+                text += """
+
+━━━━━━━━━━━━━━━━━━━━
+
+💎 <b>Want permanent access?</b>
+Buy subscription for ad-free direct files!
+
+💰 Send /plan to view subscription options"""
+            
+            await message.reply_text(text=text, protect_content=True)
         else:
-            return await message.reply_text(text="<b>ɪɴᴠᴀʟɪᴅ ʟɪɴᴋ ᴏʀ ᴇxᴘɪʀᴇᴅ ʟɪɴᴋ</b>", protect_content=True)
+            return await message.reply_text(text="<b>❌ Invalid or expired link!</b>", protect_content=True)
             
     if data.startswith("sendfiles"):
         chat_id = int("-" + file_id.split("-")[1])
