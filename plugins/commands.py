@@ -531,7 +531,8 @@ Buy subscription for ad-free direct files!
                 return
         
         if temp.SHORT.get(user)==None:
-            await message.reply_text(text="<b>Please Search Again in Group</b>")
+            await message.reply_text(text="<b>⚠️ Invalid file link! Please search again in the group.</b>")
+            return
         else:
             chat_id = temp.SHORT.get(user)
         settings = await get_settings(chat_id)

@@ -2619,7 +2619,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_reply_markup(reply_markup)
     await query.answer(MSG_ALRT)
 
-# Callback handler for Try Again button after verification
+# Callback handler for verification complete - guides user to search again in group
 @Client.on_callback_query(filters.regex(r"^retry_search#"))
 async def retry_search_handler(client, query):
     try:
@@ -2638,22 +2638,37 @@ async def retry_search_handler(client, query):
         if not await check_verification(client, user_id):
             return await query.answer("⚠️ Please verify first before trying again!", show_alert=True)
         
-        # User is verified! Re-run the search automatically
-        await query.answer("✅ Searching for you automatically...", show_alert=False)
+        # User is verified! Show message to search in group and delete this message
+        await query.answer("✅ Verification complete! Go to group and search again.", show_alert=True)
         
         # Delete the verification message
-        await query.message.delete()
+        try:
+            await query.message.delete()
+        except:
+            pass
+            
+        # Create group link - handle both username and non-username groups
+        chat = query.message.chat
+        if chat.username:
+            group_link = f"https://t.me/{chat.username}"
+        else:
+            # For groups without username, try to get invite link
+            try:
+                invite_link = await client.export_chat_invite_link(chat.id)
+                group_link = invite_link
+            except:
+                # Fallback - use chat ID format (may not work for all groups)
+                group_link = f"https://t.me/c/{str(chat.id)[4:]}/1"
         
-        # Send "Searching..." message
-        reply_msg = await client.send_message(
+        # Send message directing user to go to group and type again
+        await client.send_message(
             query.message.chat.id,
-            f"<b><i>Searching For {search_query} 🔍</i></b>",
+            f"<b>✅ YOUR MESSAGE IS SUCCESSFULLY DELETED\n\nIF YOU WANT AGAIN THEN CLICK ON BELOW BUTTON</b>",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("📍 Click Here To Go To Group", url=group_link)
+            ]]),
             parse_mode=enums.ParseMode.HTML
         )
-        
-        # Run auto_filter to show results
-        ai_search = True
-        await auto_filter(client, search_query, query.message, reply_msg, ai_search)
         
     except Exception as e:
         logger.error(f"Error in retry_search_handler: {e}")
@@ -2674,26 +2689,46 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
                 # User needs to verify before seeing results
                 verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
                 
-                # Create callback data with search query for Try Again button
+                # Create callback data with search query for retry button
                 # Using base64 to encode search query to handle special characters
                 import base64
                 search_encoded = base64.b64encode(name.encode()).decode()
                 
                 btn = [[
                     InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)
-                ],[
-                    InlineKeyboardButton("🔄 Try Again", callback_data=f"retry_search#{user_id}#{search_encoded}")
                 ]]
-                # Only add tutorial button if VERIFY_TUTORIAL is configured
-                if VERIFY_TUTORIAL:
-                    btn.append([InlineKeyboardButton("ℹ️ How To Verify", url=VERIFY_TUTORIAL)])
+                # Add tutorial button with the specified URL
+                tutorial_url = "https://t.me/premiumcollection467832_bot?start=Z2V0LTUxMDg2MDAzMDk1MDQ3NQ"
+                btn.append([InlineKeyboardButton("📖 Tutorial", url=tutorial_url)])
+                # Add retry button to delete message and prompt user to search in group
+                btn.append([InlineKeyboardButton("🔄 Try Again", callback_data=f"retry_search#{user_id}#{search_encoded}")])
                 
-                await reply_msg.edit_text(
-                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify.\n\n🔄 After verification, click 'Try Again' to see results automatically!</b>",
+                verify_msg = await reply_msg.edit_text(
+                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify.\n\n🔄 After verification, go to the group and type again!</b>",
                     reply_markup=InlineKeyboardMarkup(btn),
                     parse_mode=enums.ParseMode.HTML
                 )
+                # Store verification message ID for deletion when user searches again
+                temp.VERIFY_MSG[user_id] = {"chat_id": verify_msg.chat.id, "message_id": verify_msg.id}
                 return  # Stop processing, don't show results
+            else:
+                # User is verified! Delete the old verification message if it exists
+                if user_id in temp.VERIFY_MSG:
+                    try:
+                        old_verify_msg = temp.VERIFY_MSG[user_id]
+                        await client.delete_messages(
+                            chat_id=old_verify_msg["chat_id"],
+                            message_ids=old_verify_msg["message_id"]
+                        )
+                        # Remove from temp storage
+                        del temp.VERIFY_MSG[user_id]
+                    except Exception as e:
+                        logger.error(f"Error deleting old verification message: {e}")
+                        # Even if deletion fails, remove from temp storage
+                        try:
+                            del temp.VERIFY_MSG[user_id]
+                        except:
+                            pass
     
     if not spoll:
         message = msg
