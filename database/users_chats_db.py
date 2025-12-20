@@ -324,6 +324,14 @@ class Database:
         verified_col = self.db.verified_users
         return verified_col.find({})
     
+    async def get_verified_users(self):
+        """Get all verified users as a list"""
+        verified_col = self.db.verified_users
+        users = []
+        async for user in verified_col.find({}):
+            users.append(user)
+        return users
+    
     async def get_verified_users_count(self):
         """Get count of verified users"""
         verified_col = self.db.verified_users
