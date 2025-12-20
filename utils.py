@@ -618,6 +618,26 @@ async def check_verification(bot, userid):
         return False  
     
 async def send_all(bot, userid, files, ident, chat_id, user_name, query):
+    # Check verification first  
+    verify_status = await check_verification(bot, userid)
+    if not verify_status:
+        # User needs to verify
+        try:
+            verify_url = await get_token(bot, userid, f"https://telegram.me/{temp.U_NAME}?start=")
+            btn = [[InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)]]
+            await bot.send_message(
+                chat_id=userid,
+                text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify and get your files.\n\n⏰ After verification, click on the file button again.</b>",
+                reply_markup=InlineKeyboardMarkup(btn),
+                parse_mode=enums.ParseMode.HTML
+            )
+            await query.answer("⚠️ Please verify first to get files!", show_alert=True)
+            return
+        except Exception as e:
+            logger.error(f"Error sending verify message: {e}")
+            await query.answer("⚠️ Please verify first! Send /start to the bot.", show_alert=True)
+            return
+    
     settings = await get_settings(chat_id)
     if 'is_shortlink' in settings.keys():
         ENABLE_SHORTLINK = settings['is_shortlink']
