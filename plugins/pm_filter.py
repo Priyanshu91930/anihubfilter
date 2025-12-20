@@ -1138,6 +1138,11 @@ async def cb_handler(client: Client, query: CallbackQuery):
         elif data.startswith("vp_revoke_"):
             user_id = int(data.split("_")[2])
             await db.revoke_user_verification(user_id)
+            
+            # Also remove from in-memory VERIFIED dictionary
+            if user_id in VERIFIED:
+                del VERIFIED[user_id]
+            
             await query.answer(f"✅ Revoked user {user_id}", show_alert=True)
             await show_vp_users(client, query, 0)
         
