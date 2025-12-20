@@ -2612,6 +2612,30 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
 async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+    
+    # Check verification BEFORE showing search results (for non-premium, non-admin users)
+    if not spoll:  # Only for direct searches, not spelling corrections
+        message = msg
+        user_id = message.from_user.id if message.from_user else 0
+        
+        # Skip verification for admins and premium users
+        if user_id not in ADMINS and not await db.has_premium_access(user_id):
+            # Check if user is verified
+            if not await check_verification(client, user_id):
+                # User needs to verify before seeing results
+                verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
+                btn = [[
+                    InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)
+                ],[
+                    InlineKeyboardButton("ℹ️ How To Verify", url=VERIFY_TUTORIAL)
+                ]]
+                await reply_msg.edit_text(
+                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify and see search results.\n\n⏰ After verification, search again to get files.</b>",
+                    reply_markup=InlineKeyboardMarkup(btn),
+                    parse_mode=enums.ParseMode.HTML
+                )
+                return  # Stop processing, don't show results
+    
     if not spoll:
         message = msg
         if message.text.startswith("/"): return  # ignore commands
