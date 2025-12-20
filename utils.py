@@ -628,11 +628,17 @@ async def check_verification(bot, userid):
                 if time_diff.total_seconds() < (validity_hours * 3600):
                     return True
                 else:
+                    # Expired! Clean up from memory and database
+                    del VERIFIED[user.id]
+                    await db.revoke_user_verification(user.id)
                     return False
             else:  # Legacy format (just date)
                 years, month, day = verified_str.split('-')
                 comp = date(int(years), int(month), int(day))
                 if comp < today:
+                    # Expired! Clean up from memory and database
+                    del VERIFIED[user.id]
+                    await db.revoke_user_verification(user.id)
                     return False
                 else:
                     return True
@@ -662,7 +668,8 @@ async def check_verification(bot, userid):
                     VERIFIED[user.id] = verified_user['verified_date']
                     return True
                 else:
-                    # Expired
+                    # Expired! Remove from database
+                    await db.revoke_user_verification(user.id)
                     return False
             except:
                 # If parsing fails, consider not verified
