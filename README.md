@@ -1,20 +1,24 @@
 <p align="center">
-  <img src="https://i.ibb.co/dJ0gpJf1/photo-2025-06-16-12-07-05-7516517596376596504.jpg" alt="VJ-Filter-Bot Logo">
+  <img src="https://graph.org/file/879291ee8fbc41feecfce-cc326a99bd3dd054cc.jpg" alt="AniHub Filter Bot Logo">
 </p>
 <h1 align="center">
-  VJ FILTER BOT
+  ANIHUB FILTER BOT
 </h1>
 
-![Typing SVG](https://readme-typing-svg.herokuapp.com/?lines=Welcome+To+VJ+Filter+Bot!)
+![Typing SVG](https://readme-typing-svg.herokuapp.com/?lines=Welcome+To+AniHub+Filter+Bot!)
 </p>
 
-## Main Feature 
+## Main Features 
 <b>
   
 - [x] Clone Feature & On / Off
 - [x] Multiple Database Support & On / Off
 - [x] Premium Plan Feature 
 - [x] Refer To Get Premium
+- [x] **Advanced User Verification System** 🆕
+- [x] **Admin Verification Panel** 🆕  
+- [x] **Auto-Revoke Expired Verifications** 🆕
+- [x] **Try Again Button (Auto-Retry After Verification)** 🆕
 - [x] Ai Spell Check 
 - [x] Custom Force Subscribe
 - [x] Rename Feature & On / Off
@@ -29,19 +33,38 @@
 - [x] Auto Approve & On / Off
 - [x] Custom Url Shortner Support
 - [x] Token Verification & On / Off
-- [x] Send All Button 
 - [x] Custom Tutorial Button
 - [x] Bot Pm File Auto Delete
 
 - Note : You Can Turn On Or Off Every Feature, Just Use Which Feature You Want By Turning It On.
 
-Join My <a href='https://telegram.me/vj_bots'>Update Channel</a> For More Update Regarding Repo.</b>
+</b>
 
-### How To Deploy : [Video Tutorial](https://youtu.be/3SJR7vH2kRo)
+## 🆕 New Verification Features
+
+### Admin Verification Panel
+- **Toggle Verification ON/OFF** - Enable/disable user verification system
+- **View Verified Users** - See all verified users with pagination
+- **Revoke Verification** - Remove user verification with one click (❌ button)
+- **Set Validity Hours** - Configure how long verification lasts (e.g., 3, 24, 48 hours)
+- **Set Shortlink & API** - Configure custom shortlink URL and API for verification
+- **Auto-Revoke Expired Users** - Users are automatically revoked when time expires
+
+### User Experience
+- **Verification Before Search Results** - Users must verify before seeing any results
+- **Try Again Button** - After verification, users can click "Try Again" to automatically see results without searching again
+- **Persistent Verification** - Verification persists across bot restarts (stored in database)
+- **Time-Based Access** - Users get access for configured hours, then must re-verify
+
+### Admin Commands
+```
+• /verify_panel - Open the admin verification management panel
+```
 
 ## Commands
 ```
 • /start - 𝑇𝑜 𝑠𝑡𝑎𝑟𝑡 𝑡ℎ𝑒 𝑏𝑜𝑡
+• /verify_panel - 𝑂𝑝𝑒𝑛 𝑎𝑑𝑚𝑖𝑛 𝑣𝑒𝑟𝑖𝑓𝑖𝑐𝑎𝑡𝑖𝑜𝑛 𝑝𝑎𝑛𝑒𝑙
 • /clone - 𝐶𝑟𝑒𝑎𝑡𝑒 𝑦𝑜𝑢𝑟 𝑜𝑤𝑛 𝑐𝑙𝑜𝑛𝑒 𝑎𝑢𝑡𝑜 𝑓𝑖𝑙𝑡𝑒𝑟 𝑏𝑜𝑡
 • /index - 𝑖𝑛𝑑𝑒𝑥 𝑓𝑖𝑙𝑒 𝑓𝑟𝑜𝑚 𝑦𝑜𝑢𝑟 𝑐ℎ𝑎𝑛𝑛𝑒𝑙
 • /setskip - 𝑇𝑜 𝑠𝑘𝑖𝑝 𝑛𝑢𝑚𝑏𝑒𝑟 𝑜𝑓 𝑚𝑒𝑠𝑠𝑎𝑔𝑒𝑠 𝑤ℎ𝑒𝑛 𝑖𝑛𝑑𝑒𝑥𝑖𝑛𝑔 𝑓𝑖𝑙𝑒𝑠
@@ -133,7 +156,7 @@ Join My <a href='https://telegram.me/vj_bots'>Update Channel</a> For More Update
 <br>
 <br>
 
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/VJBots/VJ-Filter-Bot&branch=Tech_VJ&name=VJ-Filter-Bot)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/Priyanshu91930/anihubfilter&branch=main&name=anihub-filter-bot)
 </details>
 
 <details><summary><b>Deploy To Render</b></summary>
@@ -160,7 +183,7 @@ Use these settings when adding a monitor:</b>
 <b>Click on the below button to deploy directly to render ↓</b>
 <br>
 <br>
-<a href="https://render.com/deploy?repo=https://github.com/VJBots/VJ-Filter-Bot/tree/Tech_VJ">
+<a href="https://render.com/deploy?repo=https://github.com/Priyanshu91930/anihubfilter">
 <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render">
 </a>
 </details>
@@ -168,7 +191,7 @@ Use these settings when adding a monitor:</b>
 <details><summary><b>Deploy To VPS</summary>
 
 
-`git clone https://github.com/VJBots/VJ-Filter-Bot`
+`git clone https://github.com/Priyanshu91930/anihubfilter`
 
 Install Packages
 
@@ -186,21 +209,20 @@ Edit info.py with variables as given below then run bot
 
 ## Thanks to 
  - <b>Thanks To [Pyrogram Library](https://github.com/pyrogram/pyrogram) & [Pyrofork Library](https://github.com/Mayuri-Chan/pyrofork)
- - Thanks To [Tech VJ](https://youtube.com/@Tech_VJ) To Modify And Add Amazing Feature In The Repo
- - Thanks To [Eva Marie](https://t.me/TeamEvamaria) For Base Repo
- - Thanks To All Everyone In This Journey</b>
+ - Thanks To [Tech VJ](https://youtube.com/@Tech_VJ) For Base Repo
+ - Thanks To [Eva Marie](https://t.me/TeamEvamaria) For Original Inspiration
+ - Thanks To All Contributors & Users</b>
 
 ## Note 🏷️
 
-<b>• If You Want Paid Edits Or Any Paid Features In Any Kind Of Auto Filter Bot Repo You Can Contact Developer.</b>
- 
-[![Contact Developer](https://img.shields.io/static/v1?label=Contact+Developer&message=On+Telegram&color=critical)](https://telegram.me/KingVJ01) 
+<b>• This is a modified version with advanced verification features.
+• All new features are well-tested and production-ready.
+• For support or issues, please create a GitHub issue.</b>
 
-<b>Fork The Repo And Edit As Per Your Needs.</b>
 
 ## Disclaimer
 [![GNU Affero General Public License 2.0](https://www.gnu.org/graphics/agplv3-155x51.png)](https://www.gnu.org/licenses/agpl-3.0.en.html#header)    
-<b>Licensed under [GNU AGPL 2.0.](https://github.com/VJBots/VJ-Filter-Bot/blob/Tech_VJ/LICENSE)
+<b>Licensed under [GNU AGPL 2.0.](https://github.com/Priyanshu91930/anihubfilter/blob/main/LICENSE)
 Selling The Codes To Other People For Money Is *Strictly Prohibited*.</b>
 
 </pre>
