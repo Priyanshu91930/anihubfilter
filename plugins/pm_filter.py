@@ -2630,45 +2630,18 @@ async def retry_search_handler(client, query):
         if query.from_user.id != user_id:
             return await query.answer("⚠️ This button is not for you!", show_alert=True)
         
-        # Decode the search query
-        import base64
-        search_query = base64.b64decode(search_encoded).decode()
-        
         # Check if user is now verified
         if not await check_verification(client, user_id):
             return await query.answer("⚠️ Please verify first before trying again!", show_alert=True)
         
-        # User is verified! Show message to search in group and delete this message
-        await query.answer("✅ Verification complete! Go to group and search again.", show_alert=True)
+        # User is verified! Just delete this message
+        await query.answer("✅ Verified! Now search again in the group.", show_alert=False)
         
         # Delete the verification message
         try:
             await query.message.delete()
         except:
             pass
-            
-        # Create group link - handle both username and non-username groups
-        chat = query.message.chat
-        if chat.username:
-            group_link = f"https://t.me/{chat.username}"
-        else:
-            # For groups without username, try to get invite link
-            try:
-                invite_link = await client.export_chat_invite_link(chat.id)
-                group_link = invite_link
-            except:
-                # Fallback - use chat ID format (may not work for all groups)
-                group_link = f"https://t.me/c/{str(chat.id)[4:]}/1"
-        
-        # Send message directing user to go to group and type again
-        await client.send_message(
-            query.message.chat.id,
-            f"<b>✅ YOUR MESSAGE IS SUCCESSFULLY DELETED\n\nIF YOU WANT AGAIN THEN CLICK ON BELOW BUTTON</b>",
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("📍 Click Here To Go To Group", url=group_link)
-            ]]),
-            parse_mode=enums.ParseMode.HTML
-        )
         
     except Exception as e:
         logger.error(f"Error in retry_search_handler: {e}")
