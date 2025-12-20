@@ -2610,6 +2610,46 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_reply_markup(reply_markup)
     await query.answer(MSG_ALRT)
 
+# Callback handler for Try Again button after verification
+@Client.on_callback_query(filters.regex(r"^retry_search#"))
+async def retry_search_handler(client, query):
+    try:
+        _, user_id_str, search_encoded = query.data.split("#")
+        user_id = int(user_id_str)
+        
+        # Check if this is the right user clicking the button
+        if query.from_user.id != user_id:
+            return await query.answer("⚠️ This button is not for you!", show_alert=True)
+        
+        # Decode the search query
+        import base64
+        search_query = base64.b64decode(search_encoded).decode()
+        
+        # Check if user is now verified
+        if not await check_verification(client, user_id):
+            return await query.answer("⚠️ Please verify first before trying again!", show_alert=True)
+        
+        # User is verified! Re-run the search automatically
+        await query.answer("✅ Searching for you automatically...", show_alert=False)
+        
+        # Delete the verification message
+        await query.message.delete()
+        
+        # Send "Searching..." message
+        reply_msg = await client.send_message(
+            query.message.chat.id,
+            f"<b><i>Searching For {search_query} 🔍</i></b>",
+            parse_mode=enums.ParseMode.HTML
+        )
+        
+        # Run auto_filter to show results
+        ai_search = True
+        await auto_filter(client, search_query, query.message, reply_msg, ai_search)
+        
+    except Exception as e:
+        logger.error(f"Error in retry_search_handler: {e}")
+        await query.answer("⚠️ Something went wrong. Please search again.", show_alert=True)
+
 async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     
@@ -2624,15 +2664,23 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
             if not await check_verification(client, user_id):
                 # User needs to verify before seeing results
                 verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
+                
+                # Create callback data with search query for Try Again button
+                # Using base64 to encode search query to handle special characters
+                import base64
+                search_encoded = base64.b64encode(name.encode()).decode()
+                
                 btn = [[
                     InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)
+                ],[
+                    InlineKeyboardButton("🔄 Try Again", callback_data=f"retry_search#{user_id}#{search_encoded}")
                 ]]
                 # Only add tutorial button if VERIFY_TUTORIAL is configured
                 if VERIFY_TUTORIAL:
                     btn.append([InlineKeyboardButton("ℹ️ How To Verify", url=VERIFY_TUTORIAL)])
                 
                 await reply_msg.edit_text(
-                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify and see search results.\n\n⏰ After verification, search again to get files.</b>",
+                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify.\n\n🔄 After verification, click 'Try Again' to see results automatically!</b>",
                     reply_markup=InlineKeyboardMarkup(btn),
                     parse_mode=enums.ParseMode.HTML
                 )
