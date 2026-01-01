@@ -42,16 +42,10 @@ async def give_filter(client, message):
             try:
                 btn = await pub_is_subscribed(client, message, settings['fsub'])
                 if btn:
-                    # Add Verify button with shortlink if VERIFY is enabled
-                    if VERIFY:
-                        verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
-                        btn.insert(0, [InlineKeyboardButton("👉 Verify", url=verify_url)])
-                    # Add subscription and group buttons
-                    btn.append([InlineKeyboardButton("Buy Subscription | No Ads", callback_data="subscription")])
-                    btn.append([InlineKeyboardButton("Free Movie Group", url=GRP_LNK)])
+                    # FSUB panel - only show channel join buttons and Try Again
                     btn.append([InlineKeyboardButton("Try Again 🔄", callback_data=f"unmuteme#{int(user_id)}")])
                     await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
-                    await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>1:</b> Verify yourself to use me !\n<b>2:</b> You need to join our channel to use me.", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+                    await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>You need to join our channel(s) to use me.</b>\n\n<b>👇 Click the buttons below to join:</b>", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
                     return
             except Exception as e:
                 print(e)
