@@ -42,16 +42,10 @@ async def give_filter(client, message):
             try:
                 btn = await pub_is_subscribed(client, message, settings['fsub'])
                 if btn:
-                    # Add Verify button with shortlink if VERIFY is enabled
-                    if VERIFY:
-                        verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
-                        btn.insert(0, [InlineKeyboardButton("👉 Verify", url=verify_url)])
-                    # Add subscription and group buttons
-                    btn.append([InlineKeyboardButton("Buy Subscription | No Ads", callback_data="subscription")])
-                    btn.append([InlineKeyboardButton("Free Movie Group", url=GRP_LNK)])
+                    # FSUB panel - only show channel join buttons and Try Again
                     btn.append([InlineKeyboardButton("Try Again 🔄", callback_data=f"unmuteme#{int(user_id)}")])
                     await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
-                    await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>1:</b> Verify yourself to use me !\n<b>2:</b> You need to join our channel to use me.", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+                    await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>You need to join our channel(s) to use me.</b>\n\n<b>👇 Click the buttons below to join:</b>", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
                     return
             except Exception as e:
                 print(e)
@@ -125,9 +119,24 @@ async def pm_text(bot, message):
         return
     
     if PM_SEARCH == True:
-        ai_search = True
-        reply_msg = await bot.send_message(message.from_user.id, f"<b><i>Searching For {content} 🔍</i></b>", reply_to_message_id=message.id)
-        await auto_filter(bot, content, message, reply_msg, ai_search)
+        # Check if user is admin - allow admins to search in PM
+        if user_id in ADMINS:
+            ai_search = True
+            reply_msg = await bot.send_message(message.from_user.id, f"<b><i>Searching For {content} 🔍</i></b>", reply_to_message_id=message.id)
+            await auto_filter(bot, content, message, reply_msg, ai_search)
+        else:
+            # Restrict non-admin users from searching in DM
+            btn = [[
+                InlineKeyboardButton("🎬 Search In Group", url=GRP_LNK)
+            ]]
+            await message.reply_text(
+                text=f"<b>⚠️ Hey {message.from_user.mention}!</b>\n\n"
+                     f"<b>Direct search in bot is not allowed.</b>\n\n"
+                     f"<b>👉 Please join our movie group and search there to get files.</b>\n\n"
+                     f"<i>Click the button below to join the group:</i>",
+                reply_markup=InlineKeyboardMarkup(btn),
+                parse_mode=enums.ParseMode.HTML
+            )
     
 @Client.on_callback_query(filters.regex(r"^next"))
 async def next_page(bot, query):
