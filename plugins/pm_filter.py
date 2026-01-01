@@ -524,6 +524,9 @@ async def filter_episodes_cb_handler(client: Client, query: CallbackQuery):
     _, lang, key = query.data.split("#")
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     search = FRESH.get(key)
+    if search is None:
+        await query.answer("⚠️ Session expired! Please search again.", show_alert=True)
+        return
     try:
         search = search.replace(' ', '_')
     except:
