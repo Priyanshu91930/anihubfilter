@@ -238,6 +238,10 @@ Send /cancel to cancel."""
         # Back to panel
         elif data == "vp_back":
             await send_verify_panel(client, query.message, edit=True)
+        
+        # Catch unhandled vp_ callbacks
+        else:
+            await query.answer(f"Unknown action: {data}", show_alert=True)
     
     except Exception as e:
         logger.error(f"Error in verify callback: {e}")
