@@ -118,7 +118,11 @@ async def pm_text(bot, message):
             await message.reply(f"❌ Error: {e}")
         return
     
-    if PM_SEARCH == True:
+    # Get PM search setting from database (global setting controlled by admin)
+    verify_settings = await db.get_verify_settings()
+    pm_search_enabled = verify_settings.get('pm_search', True)  # Default to True
+    
+    if pm_search_enabled:
         # Check if user is admin - allow admins to search in PM
         if user_id in ADMINS:
             ai_search = True
@@ -137,6 +141,19 @@ async def pm_text(bot, message):
                 reply_markup=InlineKeyboardMarkup(btn),
                 parse_mode=enums.ParseMode.HTML
             )
+    else:
+        # PM Search is disabled - restrict all users
+        btn = [[
+            InlineKeyboardButton("🎬 Search In Group", url=GRP_LNK)
+        ]]
+        await message.reply_text(
+            text=f"<b>⚠️ Hey {message.from_user.mention}!</b>\n\n"
+                 f"<b>Direct search in bot is not allowed.</b>\n\n"
+                 f"<b>👉 Please join our movie group and search there to get files.</b>\n\n"
+                 f"<i>Click the button below to join the group:</i>",
+            reply_markup=InlineKeyboardMarkup(btn),
+            parse_mode=enums.ParseMode.HTML
+        )
     
 @Client.on_callback_query(filters.regex(r"^next"))
 async def next_page(bot, query):

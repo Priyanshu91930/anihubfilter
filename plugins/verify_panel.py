@@ -52,6 +52,8 @@ async def send_verify_panel(client, message, edit=False):
         else:
             masked_api = 'Not Set'
         
+        pm_search_status = "✅ ON" if settings.get('pm_search', True) else "❌ OFF"
+        
         text = f"""<b>🔐 Verification Admin Panel</b>
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -61,6 +63,7 @@ async def send_verify_panel(client, message, edit=False):
 <b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
 <b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
 <b>🔑 Shortlink API:</b> <code>{masked_api}</code>
+<b>🔍 PM Search:</b> {pm_search_status}
 
 ━━━━━━━━━━━━━━━━━━━━
 
@@ -78,6 +81,10 @@ async def send_verify_panel(client, message, edit=False):
             [
                 InlineKeyboardButton("🔗 Set Shortlink", callback_data="vp_shortlink"),
                 InlineKeyboardButton("🔑 Set API", callback_data="vp_api")
+            ],
+            [
+                InlineKeyboardButton(f"🔍 PM Search: {'ON' if settings.get('pm_search', True) else 'OFF'}", 
+                                   callback_data="vp_pm_search")
             ],
             [
                 InlineKeyboardButton("🔄 Refresh", callback_data="vp_refresh"),
@@ -209,6 +216,17 @@ Send /cancel to cancel."""
             
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the validity hours now...")
+        
+        # Toggle PM Search ON/OFF
+        elif data == "vp_pm_search":
+            settings = await db.get_verify_settings()
+            new_status = not settings.get('pm_search', True)
+            settings['pm_search'] = new_status
+            await db.update_verify_settings(settings)
+            
+            status_text = "ON ✅" if new_status else "OFF ❌"
+            await query.answer(f"PM Search is now {status_text}", show_alert=True)
+            await send_verify_panel(client, query.message, edit=True)
         
         # Revoke user verification
         elif data.startswith("vp_revoke_"):
