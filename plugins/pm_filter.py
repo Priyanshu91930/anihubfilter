@@ -122,27 +122,15 @@ async def pm_text(bot, message):
     verify_settings = await db.get_verify_settings()
     pm_search_enabled = verify_settings.get('pm_search', True)  # Default to True
     
-    if pm_search_enabled:
-        # Check if user is admin - allow admins to search in PM
-        if user_id in ADMINS:
-            ai_search = True
-            reply_msg = await bot.send_message(message.from_user.id, f"<b><i>Searching For {content} 🔍</i></b>", reply_to_message_id=message.id)
-            await auto_filter(bot, content, message, reply_msg, ai_search)
-        else:
-            # Restrict non-admin users from searching in DM
-            btn = [[
-                InlineKeyboardButton("🎬 Search In Group", url=GRP_LNK)
-            ]]
-            await message.reply_text(
-                text=f"<b>⚠️ Hey {message.from_user.mention}!</b>\n\n"
-                     f"<b>Direct search in bot is not allowed.</b>\n\n"
-                     f"<b>👉 Please join our movie group and search there to get files.</b>\n\n"
-                     f"<i>Click the button below to join the group:</i>",
-                reply_markup=InlineKeyboardMarkup(btn),
-                parse_mode=enums.ParseMode.HTML
-            )
+    # When PM Search is ON - allow all users to search
+    # When PM Search is OFF - only admins can search
+    if pm_search_enabled or user_id in ADMINS:
+        # Allow search in PM
+        ai_search = True
+        reply_msg = await bot.send_message(message.from_user.id, f"<b><i>Searching For {content} 🔍</i></b>", reply_to_message_id=message.id)
+        await auto_filter(bot, content, message, reply_msg, ai_search)
     else:
-        # PM Search is disabled - restrict all users
+        # PM Search is disabled and user is not admin - restrict
         btn = [[
             InlineKeyboardButton("🎬 Search In Group", url=GRP_LNK)
         ]]
