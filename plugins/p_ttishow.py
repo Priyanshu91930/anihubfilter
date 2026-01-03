@@ -286,12 +286,20 @@ async def list_chats(bot, message):
     chats = await db.get_all_chats()
     out = "Chats Saved In DB Are:\n\n"
     async for chat in chats:
-        out += f"**Title:** `{chat['title']}`\n**- ID:** `{chat['id']}`"
+        chat_id = chat['id']
+        # Create clickable link for the group
+        # For private groups/channels, use t.me/c/ format
+        if str(chat_id).startswith('-100'):
+            chat_link = f"https://t.me/c/{str(chat_id)[4:]}/1"
+        else:
+            chat_link = f"https://t.me/c/{str(chat_id).replace('-', '')}/1"
+        
+        out += f"**Title:** [{chat['title']}]({chat_link})\n**- ID:** `{chat_id}`"
         if chat['chat_status']['is_disabled']:
             out += '( Disabled Chat )'
         out += '\n'
     try:
-        await raju.edit_text(out)
+        await raju.edit_text(out, disable_web_page_preview=True)
     except MessageTooLong:
         with open('chats.txt', 'w+') as outfile:
             outfile.write(out)

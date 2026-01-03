@@ -436,6 +436,35 @@ Buy subscription for ad-free direct files!
         await k.edit("<b>✅ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ɪs sᴜᴄᴄᴇssғᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ</b>")
         return
         
+    # Handler for files_verify - Shows verify message in PM when user clicks file but is not verified
+    elif data.startswith("files_verify"):
+        user = message.from_user.id
+        # file_id is already extracted from the data
+        
+        # Get verify URL using shortlink from verify panel settings
+        verify_url = await get_token(client, user, f"https://telegram.me/{temp.U_NAME}?start=")
+        
+        # Get validity hours from verify panel settings
+        verify_settings = await db.get_verify_settings()
+        validity_hours = verify_settings.get('validity_hours', 24)
+        
+        btn = [[
+            InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)
+        ]]
+        # Add tutorial button
+        if VERIFY_TUTORIAL:
+            btn.append([InlineKeyboardButton("ℹ️ How To Verify", url=VERIFY_TUTORIAL)])
+        
+        text = f"""<b>🔐 Verification Required!</b>
+━━━━━━━━━━━━━━━━━━━━
+<b>👋 Hey {message.from_user.mention}!</b>
+You need to verify to get files.
+🎁 <b>You will get {validity_hours} hours of non-stop free access without ads!</b>
+━━━━━━━━━━━━━━━━━━━━
+✅ Click the button below to verify now!"""
+
+        await message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+        return
     
     elif data.startswith("short"):
         user = message.from_user.id
@@ -490,11 +519,12 @@ Buy subscription for ad-free direct files!
                         reply_markup=InlineKeyboardMarkup(btn)
                     )
                     return
-            if STREAM_MODE == True:
-                button = [[InlineKeyboardButton('sᴛʀᴇᴀᴍ ᴀɴᴅ ᴅᴏᴡɴʟᴏᴀᴅ', callback_data=f'generate_stream_link:{file_id}')]]
-                reply_markup=InlineKeyboardMarkup(button)
-            else:
-                reply_markup = None
+            # Update Channel and Backup Channel buttons
+            button = [[
+                InlineKeyboardButton('📢 Update Channel', url='https://t.me/Anihubyt25'),
+                InlineKeyboardButton('💾 Backup Channel', url='https://t.me/Anihubyt25')
+            ]]
+            reply_markup=InlineKeyboardMarkup(button)
             msg = await client.send_cached_media(
                 chat_id=message.from_user.id,
                 file_id=file_id,
@@ -663,11 +693,12 @@ Buy subscription for ad-free direct files!
                 reply_markup=InlineKeyboardMarkup(btn)
             )
             return
-    if STREAM_MODE == True:
-        button = [[InlineKeyboardButton('sᴛʀᴇᴀᴍ ᴀɴᴅ ᴅᴏᴡɴʟᴏᴀᴅ', callback_data=f'generate_stream_link:{file_id}')]]
-        reply_markup=InlineKeyboardMarkup(button)
-    else:
-        reply_markup = None
+    # Update Channel and Backup Channel buttons
+    button = [[
+        InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
+        InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+    ]]
+    reply_markup=InlineKeyboardMarkup(button)
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,

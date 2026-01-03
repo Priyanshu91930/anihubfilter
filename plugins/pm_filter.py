@@ -1454,6 +1454,21 @@ async def cb_handler(client: Client, query: CallbackQuery):
             f_caption = f"{files['file_name']}"
 
         try:
+            # VERIFICATION CHECK - Check if user needs to verify (before shortlink check)
+            # Skip for premium users and admins
+            if clicked not in ADMINS and not await db.has_premium_access(clicked):
+                if not await check_verification(client, clicked):
+                    # User needs to verify - redirect to PM with verify message
+                    if clicked == typed:
+                        temp.SHORT[clicked] = query.message.chat.id
+                        # Redirect to PM with files_verify prefix - will show verify message in PM
+                        await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=files_verify_{file_id}")
+                        return
+                    else:
+                        await query.answer(f"Hᴇʏ {query.from_user.first_name}, Tʜɪs Is Nᴏᴛ Yᴏᴜʀ Mᴏᴠɪᴇ Rᴇǫᴜᴇsᴛ. Rᴇǫᴜᴇsᴛ Yᴏᴜʀ's !", show_alert=True)
+                        return
+            
+            # Shortlink check - only for verified users or premium users
             if settings['is_shortlink'] and not await db.has_premium_access(query.from_user.id):
                 if clicked == typed:
                     temp.SHORT[clicked] = query.message.chat.id
@@ -1470,6 +1485,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                     
             else:
                 if clicked == typed:
+                    temp.SHORT[clicked] = query.message.chat.id
                     await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start={ident}_{file_id}")
                     return
                 else:
@@ -2686,58 +2702,8 @@ async def retry_search_handler(client, query):
 async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     
-    # Check verification BEFORE showing search results (for non-premium, non-admin users)
-    if not spoll:  # Only for direct searches, not spelling corrections
-        message = msg
-        user_id = message.from_user.id if message.from_user else 0
-        
-        # Skip verification for admins and premium users
-        if user_id not in ADMINS and not await db.has_premium_access(user_id):
-            # Check if user is verified
-            if not await check_verification(client, user_id):
-                # User needs to verify before seeing results
-                verify_url = await get_token(client, user_id, f"https://telegram.me/{temp.U_NAME}?start=")
-                
-                # Create callback data with search query for retry button
-                # Using base64 to encode search query to handle special characters
-                import base64
-                search_encoded = base64.b64encode(name.encode()).decode()
-                
-                btn = [[
-                    InlineKeyboardButton("✅ Click Here To Verify", url=verify_url)
-                ]]
-                # Add tutorial button with the specified URL
-                tutorial_url = "https://t.me/tutorialanihub_bot?start=BQADAQADFAsAApwBOUbG8370F94H9RYE"
-                btn.append([InlineKeyboardButton("📖 Tutorial", url=tutorial_url)])
-                # Add retry button to delete message and prompt user to search in group
-                btn.append([InlineKeyboardButton("🔄 Try Again", callback_data=f"retry_search#{user_id}#{search_encoded}")])
-                
-                verify_msg = await reply_msg.edit_text(
-                    text="<b>🔐 You Need To Verify First!\n\n✅ Click the button below to verify.\n\n🔄 After verification, go to the group and type again!</b>",
-                    reply_markup=InlineKeyboardMarkup(btn),
-                    parse_mode=enums.ParseMode.HTML
-                )
-                # Store verification message ID for deletion when user searches again
-                temp.VERIFY_MSG[user_id] = {"chat_id": verify_msg.chat.id, "message_id": verify_msg.id}
-                return  # Stop processing, don't show results
-            else:
-                # User is verified! Delete the old verification message if it exists
-                if user_id in temp.VERIFY_MSG:
-                    try:
-                        old_verify_msg = temp.VERIFY_MSG[user_id]
-                        await client.delete_messages(
-                            chat_id=old_verify_msg["chat_id"],
-                            message_ids=old_verify_msg["message_id"]
-                        )
-                        # Remove from temp storage
-                        del temp.VERIFY_MSG[user_id]
-                    except Exception as e:
-                        logger.error(f"Error deleting old verification message: {e}")
-                        # Even if deletion fails, remove from temp storage
-                        try:
-                            del temp.VERIFY_MSG[user_id]
-                        except:
-                            pass
+    # NOTE: Verification check moved to file callback handler (when user clicks on file button)
+    # This allows users to see search results first, then verify when clicking on a file (like shortlink flow)
     
     if not spoll:
         message = msg

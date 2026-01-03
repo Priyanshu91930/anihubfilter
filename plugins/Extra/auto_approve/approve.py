@@ -342,11 +342,12 @@ async def auto_approve(client, message: ChatJoinRequest):
                         reply_markup=InlineKeyboardMarkup(btn)
                     )
                     return
-            if STREAM_MODE == True:
-                button = [[InlineKeyboardButton('sᴛʀᴇᴀᴍ ᴀɴᴅ ᴅᴏᴡɴʟᴏᴀᴅ', callback_data=f'generate_stream_link:{file_id}')]]
-                reply_markup=InlineKeyboardMarkup(button)
-            else:
-                reply_markup = None
+            # Update Channel and Backup Channel buttons
+            button = [[
+                InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
+                InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+            ]]
+            reply_markup=InlineKeyboardMarkup(button)
             msg = await client.send_cached_media(
                 chat_id=message.from_user.id,
                 file_id=file_id,
@@ -406,11 +407,12 @@ async def auto_approve(client, message: ChatJoinRequest):
                         reply_markup=InlineKeyboardMarkup(btn)
                     )
                     return
-            if STREAM_MODE == True:
-                button = [[InlineKeyboardButton('sᴛʀᴇᴀᴍ ᴀɴᴅ ᴅᴏᴡɴʟᴏᴀᴅ', callback_data=f'generate_stream_link:{file_id}')]]
-                reply_markup=InlineKeyboardMarkup(button)
-            else:
-                reply_markup = None
+            # Update Channel and Backup Channel buttons
+            button = [[
+                InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
+                InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+            ]]
+            reply_markup=InlineKeyboardMarkup(button)
             msg = await client.send_cached_media(
                 chat_id=message.from_user.id,
                 file_id=file_id,
@@ -465,11 +467,12 @@ async def auto_approve(client, message: ChatJoinRequest):
                 reply_markup=InlineKeyboardMarkup(btn)
             )
             return
-    if STREAM_MODE == True:
-        button = [[InlineKeyboardButton('sᴛʀᴇᴀᴍ ᴀɴᴅ ᴅᴏᴡɴʟᴏᴀᴅ', callback_data=f'generate_stream_link:{file_id}')]]
-        reply_markup=InlineKeyboardMarkup(button)
-    else:
-        reply_markup = None
+    # Update Channel and Backup Channel buttons
+    button = [[
+        InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
+        InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+    ]]
+    reply_markup=InlineKeyboardMarkup(button)
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,
