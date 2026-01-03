@@ -344,8 +344,8 @@ async def auto_approve(client, message: ChatJoinRequest):
                     return
             # Update Channel and Backup Channel buttons
             button = [[
-                InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
-                InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+                InlineKeyboardButton('📢 Update Channel', url='https://t.me/Anihubyt25'),
+                InlineKeyboardButton('💾 Anime in Hindi', url='https://anime.anihubyt.com/home')
             ]]
             reply_markup=InlineKeyboardMarkup(button)
             msg = await client.send_cached_media(
@@ -409,8 +409,8 @@ async def auto_approve(client, message: ChatJoinRequest):
                     return
             # Update Channel and Backup Channel buttons
             button = [[
-                InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
-                InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+                InlineKeyboardButton('📢 Update Channel', url='https://t.me/Anihubyt25'),
+                InlineKeyboardButton('💾 Anime in Hindi', url='https://anime.anihubyt.com/home')
             ]]
             reply_markup=InlineKeyboardMarkup(button)
             msg = await client.send_cached_media(
@@ -469,8 +469,8 @@ async def auto_approve(client, message: ChatJoinRequest):
             return
     # Update Channel and Backup Channel buttons
     button = [[
-        InlineKeyboardButton('📢 Update Channel', url=CHNL_LNK),
-        InlineKeyboardButton('💾 Backup Channel', url=f'https://t.me/{SUPPORT_CHAT}')
+        InlineKeyboardButton('📢 Update Channel', url='https://t.me/Anihubyt25'),
+        InlineKeyboardButton('💾 Anime in Hindi', url='https://anime.anihubyt.com/home')
     ]]
     reply_markup=InlineKeyboardMarkup(button)
     msg = await client.send_cached_media(
