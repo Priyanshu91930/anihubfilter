@@ -684,11 +684,13 @@ async def filter_languages_cb_handler(client: Client, query: CallbackQuery):
     _, lang, key = query.data.split("#")
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     search = FRESH.get(key)
+    if search is None:
+        return await query.answer("⚠️ Search expired. Please search again.", show_alert=True)
     try:
         search = search.replace(' ', '_')
     except:
         pass
-    baal = lang in search
+    baal = lang in search if search else False
     if baal:
         search = search.replace(lang, "")
     else:
