@@ -1187,6 +1187,16 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the validity hours now...")
         
+        # Toggle PM Search ON/OFF
+        elif data == "vp_pm_search":
+            settings = await db.get_verify_settings()
+            new_status = not settings.get('pm_search', True)
+            settings['pm_search'] = new_status
+            await db.update_verify_settings(settings)
+            status_text = "ON ✅" if new_status else "OFF ❌"
+            await query.answer(f"PM Search is now {status_text}", show_alert=True)
+            await refresh_vp_panel(client, query.message)
+        
         # Revoke user
         elif data.startswith("vp_revoke_"):
             user_id = int(data.split("_")[2])
