@@ -3466,6 +3466,7 @@ async def refresh_vp_panel(client, message):
     shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
     shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
     validity_hours = settings.get('validity_hours', 24)
+    pm_search_status = "✅ ON" if settings.get('pm_search', True) else "❌ OFF"
     
     if shortlink_api and shortlink_api != 'Not Set':
         masked_api = shortlink_api[:8] + "..." + shortlink_api[-4:] if len(shortlink_api) > 12 else "****"
@@ -3481,6 +3482,7 @@ async def refresh_vp_panel(client, message):
 <b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
 <b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
 <b>🔑 Shortlink API:</b> <code>{masked_api}</code>
+<b>🔍 PM Search:</b> {pm_search_status}
 
 ━━━━━━━━━━━━━━━━━━━━
 
@@ -3490,6 +3492,7 @@ async def refresh_vp_panel(client, message):
         [InlineKeyboardButton("✅ Turn ON" if not settings.get('enabled', False) else "❌ Turn OFF", callback_data="vp_toggle")],
         [InlineKeyboardButton("👥 View Users", callback_data="vp_users_0"), InlineKeyboardButton("⏰ Set Validity", callback_data="vp_validity")],
         [InlineKeyboardButton("🔗 Set Shortlink", callback_data="vp_shortlink"), InlineKeyboardButton("🔑 Set API", callback_data="vp_api")],
+        [InlineKeyboardButton(f"🔍 PM Search: {'ON' if settings.get('pm_search', True) else 'OFF'}", callback_data="vp_pm_search")],
         [InlineKeyboardButton("🔄 Refresh", callback_data="vp_refresh"), InlineKeyboardButton("❌ Close", callback_data="close_data")]
     ]
     
