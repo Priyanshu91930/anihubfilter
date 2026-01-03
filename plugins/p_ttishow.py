@@ -282,19 +282,25 @@ async def list_users(bot, message):
 
 @Client.on_message(filters.command('chats') & filters.user(ADMINS))
 async def list_chats(bot, message):
-    raju = await message.reply('Getting List Of chats')
+    raju = await message.reply('Getting List Of chats... This may take a moment.')
     chats = await db.get_all_chats()
     out = "Chats Saved In DB Are:\n\n"
     async for chat in chats:
         chat_id = chat['id']
-        # Create clickable link for the group
-        # For private groups/channels, use t.me/c/ format
-        if str(chat_id).startswith('-100'):
-            chat_link = f"https://t.me/c/{str(chat_id)[4:]}/1"
-        else:
-            chat_link = f"https://t.me/c/{str(chat_id).replace('-', '')}/1"
+        chat_title = chat['title']
         
-        out += f"**Title:** [{chat['title']}]({chat_link})\n**- ID:** `{chat_id}`"
+        # Try to generate invite link
+        try:
+            invite_link = await bot.create_chat_invite_link(chat_id)
+            chat_link = invite_link.invite_link
+        except Exception as e:
+            # If bot can't create invite link, use t.me/c/ format
+            if str(chat_id).startswith('-100'):
+                chat_link = f"https://t.me/c/{str(chat_id)[4:]}/1"
+            else:
+                chat_link = f"https://t.me/c/{str(chat_id).replace('-', '')}/1"
+        
+        out += f"**Title:** [{chat_title}]({chat_link})\n**- ID:** `{chat_id}`"
         if chat['chat_status']['is_disabled']:
             out += '( Disabled Chat )'
         out += '\n'
