@@ -45,7 +45,10 @@ async def give_filter(client, message):
                     # FSUB panel - only show channel join buttons and Try Again
                     btn.append([InlineKeyboardButton("Try Again 🔄", callback_data=f"unmuteme#{int(user_id)}")])
                     await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
-                    await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>You need to join our channel(s) to use me.</b>\n\n<b>👇 Click the buttons below to join:</b>", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+                    fsub_msg = await message.reply_photo(photo=random.choice(PICS), caption=f"<b>Hey, {message.from_user.mention},</b>\n\n<b>You need to join our channel(s) to use me.</b>\n\n<b>👇 Click the buttons below to join:</b>", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+                    
+                    # Start background task to auto-check subscription
+                    asyncio.create_task(auto_check_fsub(client, chatid, user_id, settings['fsub'], fsub_msg))
                     return
             except Exception as e:
                 print(e)
@@ -3545,3 +3548,64 @@ async def show_vp_users(client, query, page):
     buttons.append([InlineKeyboardButton("⬅️ Back to Panel", callback_data="vp_back")])
     
     await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+
+
+async def auto_check_fsub(client, chat_id, user_id, fsub_channels, fsub_msg):
+    """
+    Background task to auto-check if user has joined all FSUB channels.
+    Checks every 2 seconds for up to 5 minutes.
+    If user joins all channels, deletes the FSUB message and unmutes them.
+    """
+    max_checks = 150  # 5 minutes (150 * 2 seconds)
+    check_count = 0
+    
+    while check_count < max_checks:
+        await asyncio.sleep(2)  # Check every 2 seconds
+        check_count += 1
+        
+        try:
+            # Check if message still exists
+            try:
+                await client.get_messages(chat_id, fsub_msg.id)
+            except:
+                # Message deleted, stop checking
+                return
+            
+            # Check if user has joined all channels
+            all_joined = True
+            for channel_id in fsub_channels:
+                try:
+                    member = await client.get_chat_member(int(channel_id), user_id)
+                    if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+                        all_joined = False
+                        break
+                except UserNotParticipant:
+                    all_joined = False
+                    break
+                except Exception as e:
+                    # If we can't check, assume not joined
+                    all_joined = False
+                    break
+            
+            if all_joined:
+                # User has joined all channels!
+                try:
+                    # Unmute the user
+                    await client.unban_chat_member(chat_id, user_id)
+                except:
+                    pass
+                
+                try:
+                    # Delete the FSUB message
+                    await fsub_msg.delete()
+                except:
+                    pass
+                
+                return
+                
+        except Exception as e:
+            # If any error, continue checking
+            pass
+    
+    # Max checks reached, stop monitoring
+    return
