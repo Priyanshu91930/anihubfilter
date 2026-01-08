@@ -112,9 +112,39 @@ async def pm_text(bot, message):
                     if hours < 1 or hours > 720:
                         await message.reply("❌ Please enter a number between 1 and 720 hours!")
                         return
+                    # Convert hours to seconds
+                    validity_seconds = hours * 3600
+                    settings['validity_seconds'] = validity_seconds
+                    # Keep backward compatibility
                     settings['validity_hours'] = hours
                     await db.update_verify_settings(settings)
-                    await message.reply(f"✅ Verification validity set to <code>{hours} hours</code>!", parse_mode=enums.ParseMode.HTML)
+                    await message.reply(f"✅ Verification validity set to <code>{hours} Hours</code>!", parse_mode=enums.ParseMode.HTML)
+                except ValueError:
+                    await message.reply("❌ Please enter a valid number!")
+            
+            elif input_type == "validity_minutes":
+                try:
+                    minutes = int(content.strip())
+                    if minutes < 1 or minutes > 43200:  # Max 30 days in minutes
+                        await message.reply("❌ Please enter a number between 1 and 43200 minutes!")
+                        return
+                    # Convert minutes to seconds
+                    validity_seconds = minutes * 60
+                    settings['validity_seconds'] = validity_seconds
+                    await db.update_verify_settings(settings)
+                    await message.reply(f"✅ Verification validity set to <code>{minutes} Minutes</code>!", parse_mode=enums.ParseMode.HTML)
+                except ValueError:
+                    await message.reply("❌ Please enter a valid number!")
+            
+            elif input_type == "validity_seconds":
+                try:
+                    seconds = int(content.strip())
+                    if seconds < 1 or seconds > 2592000:  # Max 30 days in seconds
+                        await message.reply("❌ Please enter a number between 1 and 2592000 seconds!")
+                        return
+                    settings['validity_seconds'] = seconds
+                    await db.update_verify_settings(settings)
+                    await message.reply(f"✅ Verification validity set to <code>{seconds} Seconds</code>!", parse_mode=enums.ParseMode.HTML)
                 except ValueError:
                     await message.reply("❌ Please enter a valid number!")
         except Exception as e:

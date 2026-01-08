@@ -44,7 +44,22 @@ async def send_verify_panel(client, message, edit=False):
         status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
         shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
         shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
-        validity_hours = settings.get('validity_hours', 24)
+        # Get validity in seconds (default 24 hours = 86400 seconds)
+        validity_seconds = settings.get('validity_seconds')
+        if validity_seconds is None:
+            validity_hours = settings.get('validity_hours', 24)
+            validity_seconds = validity_hours * 3600
+        
+        # Convert to human-readable format
+        if validity_seconds >= 3600 and validity_seconds % 3600 == 0:
+            validity_value = validity_seconds // 3600
+            validity_unit = "Hours"
+        elif validity_seconds >= 60 and validity_seconds % 60 == 0:
+            validity_value = validity_seconds // 60
+            validity_unit = "Minutes"
+        else:
+            validity_value = validity_seconds
+            validity_unit = "Seconds"
         
         # Mask API key for security
         if shortlink_api and shortlink_api != 'Not Set':
@@ -60,7 +75,7 @@ async def send_verify_panel(client, message, edit=False):
 
 <b>📊 Status:</b> {status}
 <b>👥 Verified Users:</b> {verified_count}
-<b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
+<b>⏰ Validity:</b> <code>{validity_value} {validity_unit}</code>
 <b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
 <b>🔑 Shortlink API:</b> <code>{masked_api}</code>
 <b>🔍 PM Search:</b> {pm_search_status}
@@ -76,7 +91,7 @@ async def send_verify_panel(client, message, edit=False):
             ],
             [
                 InlineKeyboardButton("👥 View Users", callback_data="vp_users_0"),
-                InlineKeyboardButton("⏰ Set Validity", callback_data="vp_validity")
+                InlineKeyboardButton("⏰ Set Validity", callback_data="vp_validity_menu")
             ],
             [
                 InlineKeyboardButton("🔗 Set Shortlink", callback_data="vp_shortlink"),
@@ -136,9 +151,39 @@ async def handle_verify_input(client, message):
                 if hours < 1 or hours > 720:
                     await message.reply("❌ Please enter a number between 1 and 720 hours!")
                     return
+                # Convert hours to seconds
+                validity_seconds = hours * 3600
+                settings['validity_seconds'] = validity_seconds
+                # Keep backward compatibility
                 settings['validity_hours'] = hours
                 await db.update_verify_settings(settings)
-                await message.reply(f"✅ Verification validity set to <code>{hours} hours</code>!", parse_mode=enums.ParseMode.HTML)
+                await message.reply(f"✅ Verification validity set to <code>{hours} Hours</code>!", parse_mode=enums.ParseMode.HTML)
+            except ValueError:
+                await message.reply("❌ Please enter a valid number!")
+        
+        elif input_type == "validity_minutes":
+            try:
+                minutes = int(message.text.strip())
+                if minutes < 1 or minutes > 43200:  # Max 30 days in minutes
+                    await message.reply("❌ Please enter a number between 1 and 43200 minutes!")
+                    return
+                # Convert minutes to seconds
+                validity_seconds = minutes * 60
+                settings['validity_seconds'] = validity_seconds
+                await db.update_verify_settings(settings)
+                await message.reply(f"✅ Verification validity set to <code>{minutes} Minutes</code>!", parse_mode=enums.ParseMode.HTML)
+            except ValueError:
+                await message.reply("❌ Please enter a valid number!")
+        
+        elif input_type == "validity_seconds":
+            try:
+                seconds = int(message.text.strip())
+                if seconds < 1 or seconds > 2592000:  # Max 30 days in seconds
+                    await message.reply("❌ Please enter a number between 1 and 2592000 seconds!")
+                    return
+                settings['validity_seconds'] = seconds
+                await db.update_verify_settings(settings)
+                await message.reply(f"✅ Verification validity set to <code>{seconds} Seconds</code>!", parse_mode=enums.ParseMode.HTML)
             except ValueError:
                 await message.reply("❌ Please enter a valid number!")
         
@@ -205,17 +250,80 @@ Send /cancel to cancel."""
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the API key now...")
         
-        # Set validity hours
-        elif data == "vp_validity":
-            PENDING_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
+        # Show validity time unit menu
+        elif data == "vp_validity_menu":
             text = """<b>⏰ Set Verification Validity</b>
 
-Send the number of hours (e.g., 24, 48, 72)
+━━━━━━━━━━━━━━━━━━━━
+
+Choose the time unit you want to use:
+
+<b>⏱️ Hours</b> - For long-term validity (e.g., 1, 3, 24)
+<b>⏱️ Minutes</b> - For medium-term validity (e.g., 30, 60, 120)
+<b>⏱️ Seconds</b> - For short-term validity (e.g., 60, 300, 600)"""
+            
+            buttons = [
+                [InlineKeyboardButton("⏰ Hours", callback_data="vp_validity_hours")],
+                [InlineKeyboardButton("⏱️ Minutes", callback_data="vp_validity_minutes")],
+                [InlineKeyboardButton("⏲️ Seconds", callback_data="vp_validity_seconds")],
+                [InlineKeyboardButton("⬅️ Back", callback_data="vp_back")]
+            ]
+            await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+            await query.answer()
+        
+        # Set validity in hours
+        elif data == "vp_validity_hours":
+            PENDING_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
+            text = """<b>⏰ Set Verification Validity (Hours)</b>
+
+Send the number of hours (1-720)
+
+<b>Examples:</b>
+• <code>1</code> - 1 Hour
+• <code>3</code> - 3 Hours
+• <code>24</code> - 24 Hours
+• <code>72</code> - 3 Days
 
 Send /cancel to cancel."""
             
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the validity hours now...")
+        
+        # Set validity in minutes
+        elif data == "vp_validity_minutes":
+            PENDING_INPUTS[query.from_user.id] = {'type': 'validity_minutes'}
+            text = """<b>⏱️ Set Verification Validity (Minutes)</b>
+
+Send the number of minutes (1-43200)
+
+<b>Examples:</b>
+• <code>30</code> - 30 Minutes
+• <code>60</code> - 1 Hour
+• <code>180</code> - 3 Hours
+• <code>1440</code> - 1 Day
+
+Send /cancel to cancel."""
+            
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the validity minutes now...")
+        
+        # Set validity in seconds
+        elif data == "vp_validity_seconds":
+            PENDING_INPUTS[query.from_user.id] = {'type': 'validity_seconds'}
+            text = """<b>⏲️ Set Verification Validity (Seconds)</b>
+
+Send the number of seconds (1-2592000)
+
+<b>Examples:</b>
+• <code>60</code> - 1 Minute
+• <code>300</code> - 5 Minutes
+• <code>3600</code> - 1 Hour
+• <code>86400</code> - 1 Day
+
+Send /cancel to cancel."""
+            
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the validity seconds now...")
         
         # Toggle PM Search ON/OFF
         elif data == "vp_pm_search":

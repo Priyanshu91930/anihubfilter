@@ -612,7 +612,12 @@ async def check_verification(bot, userid):
     
     tz = pytz.timezone('Asia/Kolkata')
     today = date.today()
-    validity_hours = verify_settings.get('validity_hours', 24)
+    
+    # Use validity_seconds if available, otherwise convert validity_hours to seconds
+    validity_seconds = verify_settings.get('validity_seconds')
+    if validity_seconds is None:
+        validity_hours = verify_settings.get('validity_hours', 24)
+        validity_seconds = validity_hours * 3600
     
     # Check in-memory VERIFIED dict first (for performance)
     if user.id in VERIFIED.keys():
@@ -625,24 +630,28 @@ async def check_verification(bot, userid):
                 current_time = datetime.now()
                 time_diff = current_time - verified_datetime
                 
-                # Check if still valid based on hours
-                if time_diff.total_seconds() < (validity_hours * 3600):
+                # Check if still valid based on validity seconds
+                if time_diff.total_seconds() < validity_seconds:
                     return True
                 else:
                     # Expired! Clean up from memory and database
                     del VERIFIED[user.id]
                     await db.revoke_user_verification(user.id)
                     return False
-            else:  # Legacy format (just date)
-                years, month, day = verified_str.split('-')
-                comp = date(int(years), int(month), int(day))
-                if comp < today:
+            else:  # Legacy format (just date) - THIS SHOULDN'T BE USED ANYMORE
+                # For legacy date-only format, convert to datetime and check expiry properly
+                verified_datetime = datetime.strptime(verified_str, '%Y-%m-%d')
+                current_time = datetime.now()
+                time_diff = current_time - verified_datetime
+                
+                # Check if still valid based on validity seconds
+                if time_diff.total_seconds() < validity_seconds:
+                    return True
+                else:
                     # Expired! Clean up from memory and database
                     del VERIFIED[user.id]
                     await db.revoke_user_verification(user.id)
                     return False
-                else:
-                    return True
         except:
             return False
     
@@ -663,8 +672,8 @@ async def check_verification(bot, userid):
                 current_time = datetime.now()
                 time_diff = current_time - verified_datetime
                 
-                # Check if verification is still valid based on validity_hours
-                if time_diff.total_seconds() < (validity_hours * 3600):
+                # Check if verification is still valid based on validity_seconds
+                if time_diff.total_seconds() < validity_seconds:
                     # Still valid! Add back to in-memory dict for faster future checks
                     VERIFIED[user.id] = verified_user['verified_date']
                     return True
