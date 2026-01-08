@@ -1203,12 +1203,74 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the API key now...")
         
-        # Set validity hours
-        elif data == "vp_validity":
+        # Set validity - Show menu (handles both old and new callback)
+        elif data == "vp_validity" or data == "vp_validity_menu":
+            text = """<b>⏰ Set Verification Validity</b>
+
+━━━━━━━━━━━━━━━━━━━━
+
+Choose the time unit you want to use:
+
+<b>⏰ Hours</b> - For long-term validity (e.g., 1, 3, 24)
+<b>⏱️ Minutes</b> - For medium-term validity (e.g., 30, 60, 120)
+<b>⏲️ Seconds</b> - For short-term validity (e.g., 60, 300, 600)"""
+            
+            buttons = [
+                [InlineKeyboardButton("⏰ Hours", callback_data="vp_validity_hours")],
+                [InlineKeyboardButton("⏱️ Minutes", callback_data="vp_validity_minutes")],
+                [InlineKeyboardButton("⏲️ Seconds", callback_data="vp_validity_seconds")],
+                [InlineKeyboardButton("⬅️ Back", callback_data="vp_back")]
+            ]
+            await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons), parse_mode=enums.ParseMode.HTML)
+            await query.answer()
+        
+        # Set validity in hours
+        elif data == "vp_validity_hours":
             VP_INPUTS[query.from_user.id] = {'type': 'validity_hours'}
-            text = "<b>⏰ Set Validity</b>\n\nSend the number of hours (e.g., 24, 48, 72)\n\nSend /cancel to cancel."
+            text = """<b>⏰ Set Validity (Hours)</b>
+
+Send the number of hours (1-720)
+
+<b>Examples:</b>
+• <code>1</code> - 1 Hour
+• <code>3</code> - 3 Hours
+• <code>24</code> - 24 Hours
+
+Send /cancel to cancel."""
             await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
             await query.answer("📝 Send the validity hours now...")
+        
+        # Set validity in minutes
+        elif data == "vp_validity_minutes":
+            VP_INPUTS[query.from_user.id] = {'type': 'validity_minutes'}
+            text = """<b>⏱️ Set Validity (Minutes)</b>
+
+Send the number of minutes (1-43200)
+
+<b>Examples:</b>
+• <code>30</code> - 30 Minutes
+• <code>60</code> - 1 Hour
+• <code>180</code> - 3 Hours
+
+Send /cancel to cancel."""
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the validity minutes now...")
+        
+        # Set validity in seconds
+        elif data == "vp_validity_seconds":
+            VP_INPUTS[query.from_user.id] = {'type': 'validity_seconds'}
+            text = """<b>⏲️ Set Validity (Seconds)</b>
+
+Send the number of seconds (1-2592000)
+
+<b>Examples:</b>
+• <code>60</code> - 1 Minute
+• <code>300</code> - 5 Minutes
+• <code>3600</code> - 1 Hour
+
+Send /cancel to cancel."""
+            await query.message.edit_text(text, parse_mode=enums.ParseMode.HTML)
+            await query.answer("📝 Send the validity seconds now...")
         
         # Toggle PM Search ON/OFF
         elif data == "vp_pm_search":
