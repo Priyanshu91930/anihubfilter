@@ -3540,7 +3540,6 @@ async def global_filters(client, message, text=False):
     else:
         return False
 
-
 # =========== VERIFY PANEL HELPER FUNCTIONS ===========
 async def refresh_vp_panel(client, message):
     """Refresh the verification admin panel"""
@@ -3550,7 +3549,24 @@ async def refresh_vp_panel(client, message):
     status = "✅ ON" if settings.get('enabled', False) else "❌ OFF"
     shortlink_url = settings.get('shortlink_url', 'Not Set') or 'Not Set'
     shortlink_api = settings.get('shortlink_api', 'Not Set') or 'Not Set'
-    validity_hours = settings.get('validity_hours', 24)
+    
+    # Get validity in seconds (default 24 hours = 86400 seconds)
+    validity_seconds = settings.get('validity_seconds')
+    if validity_seconds is None:
+        validity_hours = settings.get('validity_hours', 24)
+        validity_seconds = validity_hours * 3600
+    
+    # Convert to human-readable format
+    if validity_seconds >= 3600 and validity_seconds % 3600 == 0:
+        validity_value = validity_seconds // 3600
+        validity_unit = "Hours"
+    elif validity_seconds >= 60 and validity_seconds % 60 == 0:
+        validity_value = validity_seconds // 60
+        validity_unit = "Minutes"
+    else:
+        validity_value = validity_seconds
+        validity_unit = "Seconds"
+    
     pm_search_status = "✅ ON" if settings.get('pm_search', True) else "❌ OFF"
     
     if shortlink_api and shortlink_api != 'Not Set':
@@ -3564,7 +3580,7 @@ async def refresh_vp_panel(client, message):
 
 <b>📊 Status:</b> {status}
 <b>👥 Verified Users:</b> {verified_count}
-<b>⏰ Validity:</b> <code>{validity_hours} Hours</code>
+<b>⏰ Validity:</b> <code>{validity_value} {validity_unit}</code>
 <b>🔗 Shortlink URL:</b> <code>{shortlink_url}</code>
 <b>🔑 Shortlink API:</b> <code>{masked_api}</code>
 <b>🔍 PM Search:</b> {pm_search_status}
@@ -3586,6 +3602,7 @@ async def refresh_vp_panel(client, message):
     except MessageNotModified:
         # Message content is the same, no need to edit
         pass
+
 
 
 async def show_vp_users(client, query, page):

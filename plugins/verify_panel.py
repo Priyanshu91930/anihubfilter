@@ -117,12 +117,30 @@ async def send_verify_panel(client, message, edit=False):
 
 
 # ==================== TEXT INPUT HANDLER ====================
-@Client.on_message(filters.private & filters.text & ~filters.command(["start", "help", "verify_panel"]), group=-1)
+# List of all known commands to exclude from text input handling
+KNOWN_COMMANDS = [
+    "start", "help", "verify_panel", "index", "setskip", "broadcast", "grp_broadcast",
+    "connect", "disconnect", "connections", "stream", "rename", "view_thumb", "del_thumb",
+    "set_thumb", "set_caption", "del_caption", "see_caption", "font", "settings", "channel_info",
+    "log", "delete", "delete_all", "template", "requests", "msg", "deletefiles", "shortlink",
+    "setshortlinkon", "setshortlinkoff", "showshortlink", "settutorial", "removetutorial",
+    "nofsub", "fsub", "give_premium", "remove_premium", "plans", "mplans", "total_requests",
+    "purge_requests", "stats", "leave", "disable", "enable", "ban", "unban", "users", "chats",
+    "invite", "link", "plink", "batch", "pbatch", "filter", "add", "viewfilters", "filters",
+    "del", "delall", "gfilter", "addg", "viewgfilters", "gfilters", "delg", "delallg", "id",
+    "info", "imdb", "search", "clone", "repo", "song", "mp3", "video", "mp4", "tts", "telegraph",
+    "stickerid", "share_text", "share", "sharetext", "tgpaste", "pasty", "paste", "genpassword",
+    "genpw", "openai", "lyrics", "json", "js", "written", "ae", "throw", "dart", "roll", "dice",
+    "slot", "cancel"
+]
+
+@Client.on_message(filters.private & filters.text & ~filters.command(KNOWN_COMMANDS), group=-1)
 async def handle_verify_input(client, message):
     """Handle text input for verification settings"""
     user_id = message.from_user.id
     if user_id not in PENDING_INPUTS:
         return  # Let other handlers process this
+
     
     pending = PENDING_INPUTS.pop(user_id)
     input_type = pending.get('type')
