@@ -380,6 +380,13 @@ async def show_verified_users(query, page):
         users_cursor = await db.get_all_verified_users()
         users = [user async for user in users_cursor]
         
+        # Get validity settings
+        verify_settings = await db.get_verify_settings()
+        validity_seconds = verify_settings.get('validity_seconds')
+        if validity_seconds is None:
+            validity_hours = verify_settings.get('validity_hours', 24)
+            validity_seconds = validity_hours * 3600
+        
         total_users = len(users)
         per_page = 10
         total_pages = (total_users + per_page - 1) // per_page if total_users > 0 else 1
@@ -401,6 +408,9 @@ async def show_verified_users(query, page):
         end_idx = start_idx + per_page
         page_users = users[start_idx:end_idx]
         
+        # Import datetime for time calculations
+        from datetime import datetime
+        
         text = f"""<b>👥 Verified Users ({total_users} total)</b>
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -410,7 +420,39 @@ async def show_verified_users(query, page):
         for i, user in enumerate(page_users, start=start_idx + 1):
             username = user.get('username', 'Unknown')
             user_id = user.get('user_id', 'Unknown')
-            text += f"<b>{i}.</b> @{username} | <code>{user_id}</code>\n"
+            verified_date = user.get('verified_date', '')
+            
+            # Calculate time remaining
+            time_remaining = "Unknown"
+            try:
+                if verified_date:
+                    if ' ' in verified_date:  # New format with timestamp
+                        verified_datetime = datetime.strptime(verified_date, '%Y-%m-%d %H:%M:%S')
+                    else:  # Legacy format
+                        verified_datetime = datetime.strptime(verified_date, '%Y-%m-%d')
+                    
+                    current_time = datetime.now()
+                    elapsed = current_time - verified_datetime
+                    remaining_seconds = validity_seconds - elapsed.total_seconds()
+                    
+                    if remaining_seconds > 0:
+                        if remaining_seconds >= 3600:
+                            hours = int(remaining_seconds // 3600)
+                            mins = int((remaining_seconds % 3600) // 60)
+                            time_remaining = f"{hours}h {mins}m"
+                        elif remaining_seconds >= 60:
+                            mins = int(remaining_seconds // 60)
+                            secs = int(remaining_seconds % 60)
+                            time_remaining = f"{mins}m {secs}s"
+                        else:
+                            time_remaining = f"{int(remaining_seconds)}s"
+                    else:
+                        time_remaining = "⏰ Expired"
+            except Exception as e:
+                logger.error(f"Error calculating time: {e}")
+                time_remaining = "Error"
+            
+            text += f"<b>{i}.</b> @{username} | <code>{user_id}</code>\n    ⏳ <i>{time_remaining} left</i>\n"
         
         text += f"""
 ━━━━━━━━━━━━━━━━━━━━
@@ -446,3 +488,4 @@ async def show_verified_users(query, page):
     except Exception as e:
         logger.error(f"Error showing verified users: {e}")
         await query.answer(f"Error: {e}", show_alert=True)
+
