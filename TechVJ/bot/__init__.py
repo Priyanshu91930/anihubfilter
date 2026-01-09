@@ -2,6 +2,7 @@
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
+import pyromod  # Must import before pyrogram to patch Client with ask() method
 from pyrogram import Client, types
 from info import *
 from utils import temp
