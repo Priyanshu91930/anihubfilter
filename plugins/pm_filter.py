@@ -213,22 +213,10 @@ async def next_page(bot, query):
             for file in files
         ]
 
-        btn.insert(0, 
-            [
-                InlineKeyboardButton('🎬 Quality', callback_data=f"qualities#{key}"),
-                InlineKeyboardButton("📺 Episodes", callback_data=f"episodes#{key}"),
-                InlineKeyboardButton("📅 Seasons",  callback_data=f"seasons#{key}")
-            ]
-        )
+
     else:
         btn = []
-        btn.insert(0, 
-            [
-                InlineKeyboardButton('🎬 Quality', callback_data=f"qualities#{key}"),
-                InlineKeyboardButton("📺 Episodes", callback_data=f"episodes#{key}"),
-                InlineKeyboardButton("📅 Seasons",  callback_data=f"seasons#{key}")
-            ]
-        )
+
     try:
         if settings['max_btn']:
             if 0 < offset <= 10:
@@ -2841,10 +2829,39 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
             files, offset, total_results = await get_search_results(message.chat.id ,search, offset=0, filter=True)
             settings = await get_settings(message.chat.id)
             if not files:
-                if settings["spell_check"]:
-                    return await advantage_spell_chok(client, name, msg, reply_msg, ai_search)
-                else:
+                # Ignore URLs
+                if search.startswith("http") or "t.me/" in search:
+                    try:
+                        await reply_msg.delete()
+                    except:
+                        pass
+                    return
+
+                # If no files found, try to auto-correct using TMDb result
+                # ai_search check prevents infinite loops
+                if ai_search:
+                    print(f"[DEBUG] No files for '{name}', trying auto-correct...")
+                    # Search TMDb for suggestions
+                    suggestions = await get_poster(name, bulk=True)
+                    if suggestions and len(suggestions) > 0:
+                        best = suggestions[0]
+                        corrected_title = best.get('title') or best.get('name')
+                        if corrected_title:
+                            print(f"[DEBUG] Auto-correcting '{name}' -> '{corrected_title}'")
+                            # Retry search with corrected title
+                            return await auto_filter(client, corrected_title, msg, reply_msg, ai_search=False)
+                
+                # If still no files (or already auto-corrected), show No File Found
+                try:
                     return await reply_msg.edit_text(f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**")
+                except Exception as e:
+                    print(f"Error editing message: {e}")
+                    # If edit fails (e.g. message deleted), try sending new message
+                    try:
+                        return await message.reply_text(f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**")
+                    except:
+                        pass
+                    return
         else:
             return
     else:
@@ -2867,22 +2884,10 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
             ]
             for file in files
         ]
-        btn.insert(0, 
-            [
-                InlineKeyboardButton('🎬 Quality', callback_data=f"qualities#{key}"),
-                InlineKeyboardButton("📺 Episodes", callback_data=f"episodes#{key}"),
-                InlineKeyboardButton("📅 Seasons",  callback_data=f"seasons#{key}")
-            ]
-        )
+
     else:
         btn = []
-        btn.insert(0, 
-            [
-                InlineKeyboardButton('🎬 Quality', callback_data=f"qualities#{key}"),
-                InlineKeyboardButton("📺 Episodes", callback_data=f"episodes#{key}"),
-                InlineKeyboardButton("📅 Seasons",  callback_data=f"seasons#{key}")
-            ]
-        )
+
     if offset != "":
         try:
             if settings['max_btn']:
@@ -2902,7 +2907,17 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
         btn.append(
             [InlineKeyboardButton(text="𝐍𝐎 𝐌𝐎𝐑𝐄 𝐏𝐀𝐆𝐄𝐒 𝐀𝐕𝐀𝐈𝐋𝐀𝐁𝐋𝐄",callback_data="pages")]
         )
-    imdb = await get_poster(search, file=(files[0])['file_name']) if settings["imdb"] else None
+    try:
+        imdb = await get_poster(search, file=(files[0])['file_name'])  # Always fetch IMDB poster
+        print(f"[DEBUG] IMDB lookup for '{search}': {'Found' if imdb else 'Not Found'}")
+        if imdb:
+            print(f"[DEBUG] Poster URL: {imdb.get('poster', 'No poster')}")
+            # User requested: if no image found, send normal message (generic text) without IMDB info
+            if not imdb.get('poster'):
+                imdb = None
+    except Exception as e:
+        print(f"[DEBUG] IMDB lookup error: {e}")
+        imdb = None
     cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
     remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
@@ -2946,9 +2961,9 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
                 cap += f"<b>\n📁 <a href='https://telegram.me/{temp.U_NAME}?start=files_{file['file_id']}'>[{get_size(file['file_size'])}] {' '.join(filter(lambda x: not x.startswith('[') and not x.startswith('@') and not x.startswith('www.'), file['file_name'].split()))}\n</a></b>"
     else:
         if settings["button"]:
-            cap = f"<b>Tʜᴇ Rᴇꜱᴜʟᴛꜱ Fᴏʀ ☞ {search}\n\nRᴇǫᴜᴇsᴛᴇᴅ Bʏ ☞ {message.from_user.mention}\n\nʀᴇsᴜʟᴛ sʜᴏᴡ ɪɴ ☞ {remaining_seconds} sᴇᴄᴏɴᴅs\n\nᴘᴏᴡᴇʀᴇᴅ ʙʏ ☞ : {message.chat.title} \n\n⚠️ ᴀꜰᴛᴇʀ 5 ᴍɪɴᴜᴛᴇꜱ ᴛʜɪꜱ ᴍᴇꜱꜱᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ 🗑️\n\n</b>"
+            cap = f"🏷 <b>Title:</b> {search}\n\n<b>Requested by:</b> {message.from_user.mention}\n\n"
         else:
-            cap = f"<b>Tʜᴇ Rᴇꜱᴜʟᴛꜱ Fᴏʀ ☞ {search}\n\nRᴇǫᴜᴇsᴛᴇᴅ Bʏ ☞ {message.from_user.mention}\n\nʀᴇsᴜʟᴛ sʜᴏᴡ ɪɴ ☞ {remaining_seconds} sᴇᴄᴏɴᴅs\n\nᴘᴏᴡᴇʀᴇᴅ ʙʏ ☞ : {message.chat.title} \n\n⚠️ ᴀꜰᴛᴇʀ 5 ᴍɪɴᴜᴛᴇꜱ ᴛʜɪꜱ ᴍᴇꜱꜱᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ 🗑️\n\n</b>"
+            cap = f"🏷 <b>Title:</b> {search}\n\n<b>Requested by:</b> {message.from_user.mention}\n\n"
             cap+="<b><u>🍿 Your Movie Files 👇</u></b>\n\n"
             for file in files:
                 cap += f"<b>📁 <a href='https://telegram.me/{temp.U_NAME}?start=files_{file['file_id']}'>[{get_size(file['file_size'])}] {' '.join(filter(lambda x: not x.startswith('[') and not x.startswith('@') and not x.startswith('www.'), file['file_name'].split()))}\n\n</a></b>"
@@ -3045,8 +3060,8 @@ async def advantage_spell_chok(client, name, msg, reply_msg, vj_search):
         await asyncio.sleep(30)
         await k.delete()
         return
-    movielist += [movie.get('title') for movie in movies]
-    movielist += [f"{movie.get('title')} {movie.get('year')}" for movie in movies]
+    movielist += [movie.get('title') for movie in movies if movie.get('title')]
+    movielist += [f"{movie.get('title')} {movie.get('year')}" for movie in movies if movie.get('title')]
     SPELL_CHECK[mv_id] = movielist
     if AI_SPELL_CHECK == True and vj_search == True:
         vj_search_new = False
@@ -3054,6 +3069,8 @@ async def advantage_spell_chok(client, name, msg, reply_msg, vj_search):
         movienamelist = []
         movienamelist += [movie.get('title') for movie in movies]
         for techvj in movienamelist:
+            if not techvj:  # Skip if movie title is None or empty
+                continue
             try:
                 mv_rqst = mv_rqst.capitalize()
             except:
