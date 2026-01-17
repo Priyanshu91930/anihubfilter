@@ -2,7 +2,7 @@
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-import logging, re, asyncio
+import logging, re, asyncio, gc
 from utils import temp
 from info import ADMINS
 from pyrogram import Client, filters, enums
@@ -148,10 +148,23 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot):
             temp.CANCEL = False
             async for message in bot.iter_messages(chat, lst_msg_id, temp.CURRENT):
                 if temp.CANCEL:
-                    await msg.edit(f"Successfully Cancelled!!\n\nSaved <code>{total_files}</code> files to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>")
+                    try:
+                        await msg.edit(f"Successfully Cancelled!!\n\nSaved <code>{total_files}</code> files to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>")
+                    except FloodWait as e:
+                        await asyncio.sleep(e.value)
+                        await msg.edit(f"Successfully Cancelled!!\n\nSaved <code>{total_files}</code> files to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>")
+                    except Exception as e:
+                        logger.error(f"Error updating cancel message: {e}")
                     break
+                
                 current += 1
-                if current % 30 == 0:
+                
+                # Add small delay every 50 messages to prevent rate limiting
+                if current % 50 == 0:
+                    await asyncio.sleep(0.1)
+                
+                # Update progress every 100 messages instead of 30 to reduce API calls
+                if current % 100 == 0:
                     can = [[InlineKeyboardButton('Cancel', callback_data='index_cancel')]]
                     reply = InlineKeyboardMarkup(can)
                     try:
@@ -159,8 +172,26 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot):
                             text=f"Total messages fetched: <code>{current}</code>\nTotal messages saved: <code>{total_files}</code>\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>",
                             reply_markup=reply
                         )
+                    except FloodWait as e:
+                        logger.warning(f"FloodWait of {e.value} seconds while updating progress")
+                        await asyncio.sleep(e.value)
+                        try:
+                            await msg.edit_text(
+                                text=f"Total messages fetched: <code>{current}</code>\nTotal messages saved: <code>{total_files}</code>\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>",
+                                reply_markup=reply
+                            )
+                        except Exception as retry_error:
+                            logger.error(f"Error retrying progress update: {retry_error}")
                     except MessageNotModified:
                         pass
+                    except Exception as e:
+                        logger.error(f"Error updating progress: {e}")
+                
+                # Garbage collection every 500 messages to manage memory
+                if current % 500 == 0:
+                    gc.collect()
+                    logger.info(f"Garbage collection performed at {current} messages")
+                
                 if message.empty:
                     deleted += 1
                     continue
@@ -175,18 +206,56 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot):
                     unsupported += 1
                     continue
                 media.caption = message.caption
-                aynav, vnay = await save_file(media)
-                if aynav:
-                    total_files += 1
-                elif vnay == 0:
-                    duplicate += 1
-                elif vnay == 2:
+                
+                try:
+                    aynav, vnay = await save_file(media)
+                    if aynav:
+                        total_files += 1
+                    elif vnay == 0:
+                        duplicate += 1
+                    elif vnay == 2:
+                        errors += 1
+                except FloodWait as e:
+                    logger.warning(f"FloodWait of {e.value} seconds while saving file")
+                    await asyncio.sleep(e.value)
+                    try:
+                        aynav, vnay = await save_file(media)
+                        if aynav:
+                            total_files += 1
+                        elif vnay == 0:
+                            duplicate += 1
+                        elif vnay == 2:
+                            errors += 1
+                    except Exception as retry_error:
+                        logger.error(f"Error retrying file save: {retry_error}")
+                        errors += 1
+                except Exception as e:
+                    logger.error(f"Error saving file: {e}")
                     errors += 1
+                    
+        except FloodWait as e:
+            logger.error(f"FloodWait error in main loop: {e.value} seconds")
+            await asyncio.sleep(e.value)
+            try:
+                k = await msg.edit(f'FloodWait error occurred. Waiting {e.value} seconds...\n\nSaved <code>{total_files}</code> files so far.')
+                await k.reply_text(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
+                await k.reply_text("**If You Get Message Not Modified Error Then Skip Your Saved File Then Index Again**")
+            except Exception as edit_error:
+                logger.error(f"Error sending FloodWait message: {edit_error}")
         except Exception as e:
             logger.exception(e)
-            k = await msg.edit(f'Error: {e}')
-            await k.reply_text(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
-            await k.reply_text("**If You Get Message Not Modified Error Then Skip Your Saved File Then Index Again**")
+            try:
+                k = await msg.edit(f'Error: {e}')
+                await k.reply_text(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
+                await k.reply_text("**If You Get Message Not Modified Error Then Skip Your Saved File Then Index Again**")
+            except Exception as edit_error:
+                logger.error(f"Error sending error message: {edit_error}")
         else:
-            await msg.edit(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
+            try:
+                await msg.edit(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
+            except FloodWait as e:
+                await asyncio.sleep(e.value)
+                await msg.edit(f'Succesfully saved <code>{total_files}</code> to dataBase!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>(Unsupported Media - `{unsupported}` )\nErrors Occurred: <code>{errors}</code>')
+            except Exception as e:
+                logger.error(f"Error sending final message: {e}")
 
