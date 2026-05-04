@@ -1,6 +1,7 @@
 pyrofork==2.3.45
-pyromod
-tgcrypto 
+pyrogram==2.0.106
+pyromod==1.5
+tgcrypto
 requests 
 bs4 
 shortzy 
@@ -40,4 +41,4 @@ dnspython==2.3.0
 ffmpeg-python>=0.2.0
 openai==0.25.0
 git+https://github.com/Joelkb/cinemagoer
-pyrogram>=2.0.0
+
