@@ -2853,26 +2853,20 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
                 
                 # If still no files (or already auto-corrected), show No File Found
                 try:
+                    await reply_msg.delete()
+                except:
+                    pass
+                
+                try:
                     req_btn = InlineKeyboardMarkup([[
                         InlineKeyboardButton("Request Movie/Series 🏷️", callback_data=f"req_btn#{name[:30]}")
                     ]])
-                    return await reply_msg.edit_text(
+                    return await message.reply_text(
                         f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**",
                         reply_markup=req_btn
                     )
                 except Exception as e:
-                    print(f"Error editing message: {e}")
-                    # If edit fails (e.g. message deleted), try sending new message
-                    try:
-                        req_btn = InlineKeyboardMarkup([[
-                            InlineKeyboardButton("Request Movie/Series 🏷️", callback_data=f"req_btn#{name[:30]}")
-                        ]])
-                        return await message.reply_text(
-                            f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**",
-                            reply_markup=req_btn
-                        )
-                    except:
-                        pass
+                    print(f"Error sending no file found message: {e}")
                     return
         else:
             return
