@@ -1516,4 +1516,172 @@ async def purge_requests(client, message):
         )
 
 
+@Client.on_message(filters.command("request"))
+async def request_movie(client, message):
+    if len(message.command) < 2:
+        return await message.reply_text(
+            "<b>⚠️ Please provide a movie or series name!</b>\n\n"
+            "Format: `/request movie_name`"
+        )
+    
+    movie_name = message.text.split(None, 1)[1]
+    user = message.from_user
+    user_mention = user.mention if user else "Anonymous"
+    user_id = user.id if user else 0
+    
+    # Notify admin
+    admin_msg_text = (
+        f"👤 **User**: {user_mention} (ID: <code>{user_id}</code>)\n"
+        f"📢 **Wants to add**: <code>{movie_name}</code>\n\n"
+        f"Please add this series/movie!"
+    )
+    
+    admin_btn = InlineKeyboardMarkup([[
+        InlineKeyboardButton("Added ✅", callback_data=f"admin_added#{user_id}")
+    ]])
+    
+    sent_to_admin = False
+    for admin in ADMINS:
+        try:
+            await client.send_message(
+                chat_id=int(admin),
+                text=admin_msg_text,
+                reply_markup=admin_btn
+            )
+            sent_to_admin = True
+        except Exception as e:
+            logger.error(f"Error sending request to admin {admin}: {e}")
+            
+    # Also log to LOG_CHANNEL if no admin could be sent directly
+    if LOG_CHANNEL:
+        try:
+            await client.send_message(
+                chat_id=LOG_CHANNEL,
+                text=admin_msg_text,
+                reply_markup=admin_btn
+            )
+            sent_to_admin = True
+        except Exception as e:
+            logger.error(f"Error sending request to LOG_CHANNEL: {e}")
+            
+    if sent_to_admin:
+        await message.reply_text(
+            f"<b>✅ Request for '{movie_name}' submitted successfully!</b>\n\n"
+            f"Admin will be notified, and you'll receive a message once it's added."
+        )
+    else:
+        await message.reply_text(
+            "<b>❌ Something went wrong while sending request to admin. Please try again later.</b>"
+        )
+
+
+@Client.on_callback_query(filters.regex(r"^req_btn#"))
+async def request_btn_handler(client, query):
+    try:
+        _, movie_name = query.data.split("#", 1)
+        user = query.from_user
+        user_mention = user.mention if user else "Anonymous"
+        user_id = user.id if user else 0
+        
+        # Notify admin
+        admin_msg_text = (
+            f"👤 **User**: {user_mention} (ID: <code>{user_id}</code>)\n"
+            f"📢 **Wants to add**: <code>{movie_name}</code>\n\n"
+            f"Please add this series/movie!"
+        )
+        
+        admin_btn = InlineKeyboardMarkup([[
+            InlineKeyboardButton("Added ✅", callback_data=f"admin_added#{user_id}")
+        ]])
+        
+        sent_to_admin = False
+        for admin in ADMINS:
+            try:
+                await client.send_message(
+                    chat_id=int(admin),
+                    text=admin_msg_text,
+                    reply_markup=admin_btn
+                )
+                sent_to_admin = True
+            except Exception as e:
+                logger.error(f"Error sending request to admin {admin}: {e}")
+                
+        if LOG_CHANNEL:
+            try:
+                await client.send_message(
+                    chat_id=LOG_CHANNEL,
+                    text=admin_msg_text,
+                    reply_markup=admin_btn
+                )
+                sent_to_admin = True
+            except Exception as e:
+                logger.error(f"Error sending request to LOG_CHANNEL: {e}")
+                
+        if sent_to_admin:
+            await query.answer("✅ Request submitted to admin successfully!", show_alert=True)
+            await query.message.edit_text(
+                f"**⚠️ No File Found For Your Query - {movie_name}**\n\n"
+                f"**📨 Request has been sent to the admin successfully! You will be notified when it's added.**"
+            )
+        else:
+            await query.answer("❌ Error submitting request. Try again.", show_alert=True)
+            
+    except Exception as e:
+        logger.error(f"Error in request_btn_handler: {e}")
+        await query.answer("⚠️ Something went wrong.", show_alert=True)
+
+
+@Client.on_callback_query(filters.regex(r"^admin_added#"))
+async def admin_added_handler(client, query):
+    try:
+        # Check if the clicker is actually an admin
+        if query.from_user.id not in ADMINS:
+            return await query.answer("⛔ Only admins can mark requests as added!", show_alert=True)
+            
+        _, user_id_str = query.data.split("#", 1)
+        user_id = int(user_id_str)
+        
+        # Parse movie name from message text
+        msg_text = query.message.text
+        movie_name = "Requested Series/Movie"
+        
+        # Look for the title line "Wants to add: <movie>"
+        for line in msg_text.split("\n"):
+            if "Wants to add:" in line:
+                movie_name = line.split("Wants to add:", 1)[1].strip()
+                break
+                
+        # Send message to user
+        user_notified = False
+        try:
+            await client.send_message(
+                chat_id=user_id,
+                text=(
+                    f"👋 **Hi! The series/movie you requested: **"
+                    f"**{movie_name}** has been added by the admin! Enjoy! 🎉"
+                )
+            )
+            user_notified = True
+        except Exception as e:
+            logger.error(f"Could not notify user {user_id}: {e}")
+            
+        # Edit admin's message
+        updated_text = (
+            f"{msg_text}\n\n"
+            f"✅ **Marked as Added by Admin!**"
+        )
+        if not user_notified:
+            updated_text += "\n*(⚠️ User could not be notified directly)*"
+            
+        await query.message.edit_text(
+            text=updated_text,
+            reply_markup=None
+        )
+        await query.answer("✅ Series marked as added!", show_alert=True)
+        
+    except Exception as e:
+        logger.error(f"Error in admin_added_handler: {e}")
+        await query.answer("⚠️ Something went wrong.", show_alert=True)
+
+
 

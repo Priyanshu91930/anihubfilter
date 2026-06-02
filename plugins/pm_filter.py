@@ -1305,7 +1305,7 @@ Send /cancel to cancel."""
             
     elif query.data == "buy_premium":
         btn = [[            
-            InlineKeyboardButton("✅sᴇɴᴅ ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ ʀᴇᴄᴇɪᴘᴛ ʜᴇʀᴇ ✅", url = OWNER_LINK)
+            InlineKeyboardButton("✅sᴇɴᴅ ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ ʀᴇᴄᴇɪᴘᴛ ʜᴇʀᴇ ✅", url = OWNER_LNK)
         ]
             for admin in ADMINS
         ]
@@ -2853,12 +2853,24 @@ async def auto_filter(client, name, msg, reply_msg, ai_search, spoll=False):
                 
                 # If still no files (or already auto-corrected), show No File Found
                 try:
-                    return await reply_msg.edit_text(f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**")
+                    req_btn = InlineKeyboardMarkup([[
+                        InlineKeyboardButton("Request Movie/Series 🏷️", callback_data=f"req_btn#{name[:30]}")
+                    ]])
+                    return await reply_msg.edit_text(
+                        f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**",
+                        reply_markup=req_btn
+                    )
                 except Exception as e:
                     print(f"Error editing message: {e}")
                     # If edit fails (e.g. message deleted), try sending new message
                     try:
-                        return await message.reply_text(f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**")
+                        req_btn = InlineKeyboardMarkup([[
+                            InlineKeyboardButton("Request Movie/Series 🏷️", callback_data=f"req_btn#{name[:30]}")
+                        ]])
+                        return await message.reply_text(
+                            f"**⚠️ No File Found For Your Query - {name}**\n**Make Sure Spelling Is Correct.**",
+                            reply_markup=req_btn
+                        )
                     except:
                         pass
                     return
